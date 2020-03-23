@@ -10,7 +10,7 @@
 #include "AP_GPS_MTK.h"
 #include "AP_GPS_MTK16.h"
 #include "AP_GPS_None.h"
-#include "AP_GPS_Auto.h"
-#include "AP_GPS_HIL.h"
-#include "AP_GPS_Shim.h"	// obsoletes AP_GPS_HIL, use in preference
-#include "AP_GPS_IMU.h"		// temporarily reinstated for Xplane support
+//#include "AP_GPS_Auto.h"
+//#include "AP_GPS_HIL.h"
+//#include "AP_GPS_Shim.h"	// obsoletes AP_GPS_HIL, use in preference
+//#include "AP_GPS_IMU.h"		// temporarily reinstated for Xplane support

@@ -189,7 +189,7 @@ protected:
 
 	enum GPS_Engine_Setting _nav_setting;
 
-	void _write_progstr_block(Stream *_fs, const prog_char *pstr, uint8_t size);
+	void _write_progstr_block(Stream *_fs, const char *pstr, uint8_t size);
 
 private:
 

@@ -19,8 +19,8 @@
 
 static unsigned int	baudrates[] = {38400U, 57600U, 9600U, 4800U};
 
-const prog_char	AP_GPS_Auto::_mtk_set_binary[]   PROGMEM = MTK_SET_BINARY;
-const prog_char	AP_GPS_Auto::_sirf_set_binary[]  PROGMEM = SIRF_SET_BINARY;
+const char	AP_GPS_Auto::_mtk_set_binary[]   PROGMEM = MTK_SET_BINARY;
+const char	AP_GPS_Auto::_sirf_set_binary[]  PROGMEM = SIRF_SET_BINARY;
 
 
 AP_GPS_Auto::AP_GPS_Auto(FastSerial *s, GPS **gps)  :

@@ -6,7 +6,7 @@
 #ifndef AP_GPS_Auto_h
 #define AP_GPS_Auto_h
 
-#include "../FastSerial/FastSerial.h"
+//#include "../FastSerial/FastSerial.h"
 #include "GPS.h"
 
 class AP_GPS_Auto : public GPS
@@ -21,7 +21,7 @@ public:
     /// @param	ptr		Pointer to a GPS * that will be fixed up by ::init
     ///					when the GPS type has been detected.
     ///
-    AP_GPS_Auto(FastSerial *s, GPS **gps);
+    AP_GPS_Auto(Stream *s, GPS **gps);
 
     /// Dummy init routine, does nothing
     virtual void		init(enum GPS_Engine_Setting nav_setting = GPS_ENGINE_NONE);
@@ -43,8 +43,8 @@ private:
     ///
     GPS			*_detect(void);
 
-    static const prog_char _mtk_set_binary[];
-    static const prog_char _sirf_set_binary[];
+    static const char _mtk_set_binary[];
+    static const char _sirf_set_binary[];
 
 	enum GPS_Engine_Setting _nav_setting;
 };

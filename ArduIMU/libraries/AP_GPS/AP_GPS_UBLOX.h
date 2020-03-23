@@ -30,7 +30,7 @@ public:
     virtual void	init(enum GPS_Engine_Setting nav_setting = GPS_ENGINE_NONE);
     virtual bool	read();
 
-    static const prog_char _ublox_set_binary[];
+    static const char _ublox_set_binary[];
 	static const uint8_t _ublox_set_binary_size;
 
 private:

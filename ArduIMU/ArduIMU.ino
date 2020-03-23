@@ -14,7 +14,7 @@
 
 #include <avr/eeprom.h>
 #include <Wire.h>
-#include <FastSerial.h>		// ArduPilot Fast Serial Library
+//#include <FastSerial.h>		// ArduPilot Fast Serial Library
 #include <AP_GPS.h>			// ArduPilot GPS library
 
 
@@ -657,7 +657,10 @@ void debug_handler(byte message)
 }
    
 /*
-EEPROM memory map
+EEPROM memory map 1K eeprom
+TODO Place mag offsets in eeprom
+
+// 
 
 0 0x00		Unused
 1 0x01 		..
