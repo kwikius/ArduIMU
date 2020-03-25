@@ -133,11 +133,11 @@ private:
 /// The MENU2 macro supports the optional pre-prompt printing function.
 ///
 #define MENU(name, prompt, commands)							\
-	static const char __menu_name__ ##name[] PROGMEM = prompt;	\
+	static constexpr char __menu_name__ ##name[] = prompt;	\
 	static Menu name(__menu_name__ ##name, commands, sizeof(commands) / sizeof(commands[0]))
 
 #define MENU2(name, prompt, commands, preprompt)				\
-	static const char __menu_name__ ##name[] PROGMEM = prompt;	\
+	static constexpr char __menu_name__ ##name[] = prompt;	\
 	static Menu name(__menu_name__ ##name, commands, sizeof(commands) / sizeof(commands[0]), preprompt)
 
 #endif

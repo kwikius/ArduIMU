@@ -2,54 +2,87 @@
 
 #include <Arduino.h>
 
+#include <avr/eeprom.h>
+#include <Wire.h>
+#include <SPI.h>
+
 #include <AP_GPS.h>			// ArduPilot GPS library
 
 #include <quan/length.hpp>
 #include <quan/time.hpp>
 
-#define SERIAL_MUX_PIN 7
-#define RED_LED_PIN 5
-#define BLUE_LED_PIN 6
-#define YELLOW_LED_PIN 5   // Yellow led is not used on ArduIMU v3
+void user_menu();
 
-//HardwareSerial & serial_port = Serial;
+// Pins on ArduIMU_V3 are numbered 
+// as Arduino Pro Mini
+namespace {
+   // multiplex between Console I/O and GPS
+   int constexpr pinSerialMux = 7;
+      int constexpr pinStateSerialMuxGPS = HIGH;
+      int constexpr pinStateSerialMuxConsole = LOW; // default : pin input, pulldown
 
+   int constexpr pinLedRED = 5;
+   int constexpr pinLedBLUE = 6;
+   int constexpr pinLedYELLOW = 13; // also  SPI SCK 
+}
+
+inline 
 quan::time_<unsigned long>::ms 
 q_millis()
 {
-  return quan::time_<unsigned long>::ms{millis()};
+   return quan::time_<unsigned long>::ms{millis()};
 }
 
 extern "C" void setup()
 {
+   // Serial in has 64 byte buffer
    Serial.begin(38400);
 
-   pinMode(SERIAL_MUX_PIN,OUTPUT); //Serial Mux
-   // if (GPS_CONNECTION == 0){
-   digitalWrite(SERIAL_MUX_PIN,HIGH); //Serial Mux
-   // } else {
-   //  digitalWrite(SERIAL_MUX_PIN,LOW); //Serial Mux
-   // }
+   Serial.print("ArduIMU setup ...\r");
+   Serial.print("[RET] * 3 for menu\n");
 
-   pinMode(RED_LED_PIN,OUTPUT); //Red LED
-   pinMode(BLUE_LED_PIN,OUTPUT); // Blue LED
-   pinMode(YELLOW_LED_PIN,OUTPUT); // Yellow LED
-   // pinMode(GROUNDSTART_PIN,INPUT);  // Remove Before Fly flag (pin 6 on ArduPilot)
-   // digitalWrite(GROUNDSTART_PIN,HIGH);
+   pinMode(pinLedRED,OUTPUT); 
+   digitalWrite(pinLedRED,HIGH);
+   pinMode(pinLedBLUE,OUTPUT); 
+   digitalWrite(pinLedBLUE,LOW);
+   pinMode(pinLedYELLOW,OUTPUT); 
+   digitalWrite(pinLedYELLOW,LOW);
 
-   digitalWrite(RED_LED_PIN,HIGH);
    delay(500);
-   digitalWrite(BLUE_LED_PIN,HIGH);
+   digitalWrite(pinLedBLUE,HIGH);
    delay(500);
-   digitalWrite(YELLOW_LED_PIN,HIGH);
+   digitalWrite(pinLedYELLOW,HIGH);
    delay(500);
-   digitalWrite(RED_LED_PIN,LOW);
+   digitalWrite(pinLedRED,LOW);
    delay(500);
-   digitalWrite(BLUE_LED_PIN,LOW);
+   digitalWrite(pinLedYELLOW,LOW);
    delay(500);
-   digitalWrite(YELLOW_LED_PIN,LOW);
-   Serial.print("Hello\n");
- 
+   digitalWrite(pinLedRED,LOW);
+
+   // look for user input
+   if ( Serial.available() >= 3){
+
+      bool menu_mode = true;
+      for ( int i = 0; i < 3; ++i){
+         auto ch = Serial.read();
+         if (ch != '\r'){
+            Serial.print(ch);
+            Serial.print(" invalid input\n");
+            menu_mode = false;
+            break;
+         }
+      }
+      // menu mode
+      // calibration of magnetometer
+      if ( menu_mode){
+           user_menu();
+      }
+   }
+
+   // read eeprom values
+
+   Serial.print("... setup complete\n");
+
 }
 
 namespace{
@@ -63,14 +96,15 @@ extern "C" void loop()
    auto const now = q_millis();
 
    if ( (now - prev_time) >= 1000_ms_U ){
-     prev_time = now;
-     Serial.print("Hello again\n");
-     if ( pin_state == HIGH){
-        digitalWrite(BLUE_LED_PIN,LOW);
-        pin_state = LOW;
-     }else{
-       digitalWrite(BLUE_LED_PIN,HIGH);
-        pin_state = HIGH;
-     }
+      prev_time = now;
+      Serial.print("Alive\n");
+      if ( pin_state == HIGH){
+         digitalWrite(pinLedBLUE,LOW);
+         pin_state = LOW;
+      }else{
+         digitalWrite(pinLedBLUE,HIGH);
+         pin_state = HIGH;
+      }
    }
 }
+

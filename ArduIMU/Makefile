@@ -20,7 +20,7 @@
 #AVR_GCC_VERSION = AVR_GCC_1_6_11
 #AVR_GCC_VERSION = AVR_GCC_1_0_4
 AVR_GCC_VERSION = AVR_GCC_1_0_6
-
+#/home/andy/Arduino/arduino-1.0.6/libraries/Wire
 ifeq ($(AVR_GCC_VERSION),AVR_GCC_1_0_4)
 	ARDUINO_PATH = /home/andy/Arduino/old/arduino-1.0.4/
 	ARDUINO_SRC_PATH = $(ARDUINO_PATH)hardware/arduino/cores/arduino/
@@ -56,7 +56,7 @@ TARGET = ArduIMU
 
 arduino_cpp_objects = CDC.o HardwareSerial.o Print.o Stream.o  WString.o main.o new.o 
 arduino_c_objects = WInterrupts.o wiring.o wiring_digital.o
-local_objects = main_loop.o
+local_objects = main_loop.o user_menu.o
 
 OBJDIR := obj
 BINDIR := bin
@@ -65,9 +65,14 @@ ARDUINO_C_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_c_objects))
 ARDUINO_CPP_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_cpp_objects))
 LOCAL_OBJECTS = $(addprefix $(OBJDIR)/,$(local_objects))
 
-OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) $(LOCAL_OBJECTS)
+OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) $(LOCAL_OBJECTS) \
+ $(OBJDIR)/menu.o
 
-INCLUDES = -I$(QUAN_INCLUDE_PATH) -I$(ARDUINO_SRC_PATH) -I$(ARDUINO_EXTRA_PATH) -Ilibraries/AP_GPS
+INCLUDES = -I$(QUAN_INCLUDE_PATH) -I$(ARDUINO_SRC_PATH) -I$(ARDUINO_EXTRA_PATH) \
+ -I$(ARDUINO_PATH)libraries/Wire/ \
+ -I$(ARDUINO_PATH)libraries/SPI/ \
+ -Ilibraries/Menu/ \
+ -Ilibraries/AP_GPS/
 
 ELFFILE =     $(BINDIR)/$(TARGET).elf
 HEXFILE =     $(BINDIR)/$(TARGET).hex
@@ -92,7 +97,7 @@ LFLAGS = -mmcu=$(ARDUINO_MCU) -Wl,-Map=$(MAPFILE),--cref -Wl,--gc-sections -Wl,-
 
 all : test
 
-upload : test
+sp_upload : test
 	$(PROG) -p $(AVRDUDE_MPU) -c arduino -P $(ARDUINO_PORT) -b $(ARDUINO_BURNRATE) -D -Uflash:w:./$(HEXFILE):i
 
 test : $(ELFFILE)
@@ -108,6 +113,9 @@ $(ARDUINO_C_OBJECTS) : $(OBJDIR)/%.o : $(ARDUINO_SRC_PATH)%.c
 	$(CC1) $(CFLAGS_C) -c $< -o $@
 
 $(LOCAL_OBJECTS) : $(OBJDIR)/%.o : %.cpp
+	$(CC) $(CFLAGS_CPP) -c $< -o $@
+
+$(OBJDIR)/menu.o : libraries/Menu/menu.cpp
 	$(CC) $(CFLAGS_CPP) -c $< -o $@
 
 $(ELFFILE) : $(OBJECTS) | $(BINDIR)
