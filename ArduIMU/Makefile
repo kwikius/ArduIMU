@@ -56,7 +56,7 @@ TARGET = ArduIMU
 
 arduino_cpp_objects = CDC.o HardwareSerial.o Print.o Stream.o  WString.o main.o new.o 
 arduino_c_objects = WInterrupts.o wiring.o wiring_digital.o
-local_objects = main_loop.o user_menu.o
+local_objects = main_loop.o user_menu.o storage.o
 
 OBJDIR := obj
 BINDIR := bin
@@ -66,11 +66,12 @@ ARDUINO_CPP_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_cpp_objects))
 LOCAL_OBJECTS = $(addprefix $(OBJDIR)/,$(local_objects))
 
 OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) $(LOCAL_OBJECTS) \
- $(OBJDIR)/menu.o
+ $(OBJDIR)/menu.o  $(OBJDIR)/eeprom.o
 
 INCLUDES = -I$(QUAN_INCLUDE_PATH) -I$(ARDUINO_SRC_PATH) -I$(ARDUINO_EXTRA_PATH) \
  -I$(ARDUINO_PATH)libraries/Wire/ \
  -I$(ARDUINO_PATH)libraries/SPI/ \
+ -I$(ARDUINO_PATH)libraries/EEPROM/ \
  -Ilibraries/Menu/ \
  -Ilibraries/AP_GPS/
 
@@ -107,6 +108,9 @@ test : $(ELFFILE)
 	$(SIZ) -A $(ELFFILE)
 	
 $(ARDUINO_CPP_OBJECTS) : $(OBJDIR)/%.o : $(ARDUINO_SRC_PATH)%.cpp
+	$(CC) $(CFLAGS_CPP) -c $< -o $@
+
+$(OBJDIR)/eeprom.o : $(ARDUINO_PATH)libraries/EEPROM/EEPROM.cpp
 	$(CC) $(CFLAGS_CPP) -c $< -o $@
 
 $(ARDUINO_C_OBJECTS) : $(OBJDIR)/%.o : $(ARDUINO_SRC_PATH)%.c

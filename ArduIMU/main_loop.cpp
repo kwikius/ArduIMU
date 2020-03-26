@@ -77,6 +77,8 @@ extern "C" void setup()
       if ( menu_mode){
            user_menu();
       }
+
+      
    }
 
    // read eeprom values

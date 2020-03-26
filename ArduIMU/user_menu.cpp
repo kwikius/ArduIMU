@@ -2,42 +2,46 @@
 #include <Arduino.h>
 
 #include "menu.h"
+#include "storage.h"
 
-#if 0
-int8_t
-menu_test(uint8_t argc, const Menu::arg *argv)
-{
-    Serial.print("This is a test with ");
-    Serial.print(argc);
-    Serial.print(" arguments\n");
+#include <quan/three_d/vect.hpp>
 
-    for (int i = 1; i < argc; i++) {
-        Serial.print(i);
-        Serial.print(": int ");
-        Serial.print(argv[i].i);
-        Serial.print(" float ");
-        Serial.println(argv[i].f, 6);    // gross
-    }
-    return 1;
+namespace {
+
+   const char* get_id_str(storageID id)
+   {
+        switch( id)
+        {
+            case      MAG_OFST:
+               return "mag_ofst";
+            case      MAG_GAIN: 
+               return "mag_gain";
+            default:
+               return "";
+        }
+   }
 }
-#endif
 
 int8_t
-compass_stg(const char*stg, uint8_t argc, const Menu::arg *argv)
+write_compass_stg(storageID id, uint8_t argc, const Menu::arg *argv)
 {
+    Serial.print("set ");
+    Serial.print(get_id_str(id));
     if ( argc != 4){
-       Serial.print("compass ");
-       Serial.print(stg);
+       Serial.print(get_id_str(id));
        Serial.print(" - expected 3 args\n");
     }else{
-       Serial.print(" set compass ");
-       Serial.print(stg);
        Serial.print( " = [");
+       quan::three_d::vect<float> value;
        for ( int i = 1; i < 4; ++i){
-          if ( i != 1){
-            Serial.print(", ");
+          value[i-1] = argv[i].f;
+       }
+       writeValueToStorage(id,value);
+       for ( int i = 0; i < 3; ++i){
+          if ( i != 0){
+              Serial.print(", ");
           }
-          Serial.print(argv[i].f,6);
+          Serial.print(value[i],6);
        }
        Serial.print("]\n");
     }
@@ -45,20 +49,56 @@ compass_stg(const char*stg, uint8_t argc, const Menu::arg *argv)
 }
 
 int8_t
-compass_gain(uint8_t argc, const Menu::arg *argv)
+read_compass_stg(storageID id, uint8_t argc, const Menu::arg *argv)
 {
-   return compass_stg("gain",argc,argv);
+    Serial.print("get ");
+    Serial.print(get_id_str(id));
+    if ( argc != 1){
+       Serial.print(" - unexpected args\n");
+    }else{
+       quan::three_d::vect<float> value;
+       readValueFromStorage(id,value);
+       Serial.print( " = [");
+       for ( int i = 0; i < 3; ++i){
+          if ( i != 0){
+              Serial.print(", ");
+          }
+          Serial.print(value[i],6);
+       }
+       Serial.print("]\n");
+    }
+    return 1;
 }
 
 int8_t
-compass_offset(uint8_t argc, const Menu::arg *argv)
+get_compass_gain(uint8_t argc, const Menu::arg *argv)
 {
-   return compass_stg("offset",argc,argv);
+   return read_compass_stg(MAG_GAIN,argc,argv);
+}
+
+int8_t
+get_compass_offset(uint8_t argc, const Menu::arg *argv)
+{
+   return read_compass_stg(MAG_OFST,argc,argv);
+}
+
+int8_t
+set_compass_gain(uint8_t argc, const Menu::arg *argv)
+{
+   return write_compass_stg(MAG_GAIN,argc,argv);
+}
+
+int8_t
+set_compass_offset(uint8_t argc, const Menu::arg *argv)
+{
+   return write_compass_stg(MAG_OFST,argc,argv);
 }
 
 constexpr struct Menu::command main_menu_commands[] = {
-    {"mag_gain",   compass_gain},
-    {"mag_ofst", compass_offset},
+    {"get_mag_gain",   get_compass_gain},
+    {"get_mag_ofst", get_compass_offset},
+    {"set_mag_gain",   set_compass_gain},
+    {"set_mag_ofst", set_compass_offset}
 };
 
 MENU(main_menu, "ArduIMU_menu", main_menu_commands);
