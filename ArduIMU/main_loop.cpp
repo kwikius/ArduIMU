@@ -11,7 +11,7 @@
 #include <quan/length.hpp>
 #include <quan/time.hpp>
 
-void user_menu();
+void user_menu1();
 
 // Pins on ArduIMU_V3 are numbered 
 // as Arduino Pro Mini
@@ -75,7 +75,7 @@ extern "C" void setup()
       // menu mode
       // calibration of magnetometer
       if ( menu_mode){
-           user_menu();
+           user_menu1();
       }
       
    }
