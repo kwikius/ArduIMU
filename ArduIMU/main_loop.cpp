@@ -33,13 +33,29 @@ q_millis()
    return quan::time_<unsigned long>::ms{millis()};
 }
 
+namespace {
+   // print a character string from program memory
+   void print_P(const char *str)
+   {
+     uint8_t val;
+     while (true) {
+       val=pgm_read_byte(str);
+       if (!val) break;
+       Serial.write(val);
+       str++;
+     }
+   }
+}
+
 extern "C" void setup()
 {
    // Serial in has 64 byte buffer
    Serial.begin(38400);
 
-   Serial.print("ArduIMU setup ...\r");
-   Serial.print("[RET] * 3 for menu\n");
+   //Serial.print_P("ArduIMU setup ...\r");
+  // Serial.print_P("[RET] * 3 for menu\n");
+   print_P(PSTR("ArduIMU setup ...\r"));
+   print_P(PSTR("[RET] * 3 for menu\n"));
 
    pinMode(pinLedRED,OUTPUT); 
    digitalWrite(pinLedRED,HIGH);

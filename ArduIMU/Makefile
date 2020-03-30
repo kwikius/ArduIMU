@@ -66,14 +66,18 @@ ARDUINO_CPP_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_cpp_objects))
 LOCAL_OBJECTS = $(addprefix $(OBJDIR)/,$(local_objects))
 
 OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) $(LOCAL_OBJECTS) \
- $(OBJDIR)/menu.o  $(OBJDIR)/eeprom.o
+ $(OBJDIR)/eeprom.o
+
+# $(OBJDIR)/menu.o 
 
 INCLUDES = -I$(QUAN_INCLUDE_PATH) -I$(ARDUINO_SRC_PATH) -I$(ARDUINO_EXTRA_PATH) \
  -I$(ARDUINO_PATH)libraries/Wire/ \
  -I$(ARDUINO_PATH)libraries/SPI/ \
  -I$(ARDUINO_PATH)libraries/EEPROM/ \
- -Ilibraries/Menu/ \
  -Ilibraries/AP_GPS/
+
+ #-Ilibraries/Menu/ \
+
 
 ELFFILE =     $(BINDIR)/$(TARGET).elf
 HEXFILE =     $(BINDIR)/$(TARGET).hex
@@ -119,8 +123,8 @@ $(ARDUINO_C_OBJECTS) : $(OBJDIR)/%.o : $(ARDUINO_SRC_PATH)%.c
 $(LOCAL_OBJECTS) : $(OBJDIR)/%.o : %.cpp
 	$(CC) $(CFLAGS_CPP) -c $< -o $@
 
-$(OBJDIR)/menu.o : libraries/Menu/menu.cpp
-	$(CC) $(CFLAGS_CPP) -c $< -o $@
+#$(OBJDIR)/menu.o : libraries/Menu/menu.cpp
+#	$(CC) $(CFLAGS_CPP) -c $< -o $@
 
 $(ELFFILE) : $(OBJECTS) | $(BINDIR)
 	$(CC) -o $@ $(LFLAGS) $(OBJECTS)

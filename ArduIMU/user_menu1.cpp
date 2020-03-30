@@ -4,7 +4,7 @@
 
 //#if 1
 
-#include <Arduino.h>
+
 
 
 
@@ -14,6 +14,9 @@
 #include <quan/config.hpp>
 
 #if defined QUAN_USE_QUAN_STD_TR1
+
+#include <Arduino.h>
+
 
 #define QUAN_ARDUINO
 
@@ -25,16 +28,15 @@ namespace std{
       template <typename ... Args>
       constexpr array( Args const & ... args)
       : m_array{args...}{}
-
       T & operator[](int i) { return m_array[i];}
-      T const & operator[](int i)const { return m_array[i];}
-
+      constexpr T const & operator[](int i)const { return m_array[i];}
       T m_array[N];
    };
 
 }// std
 #else
 #include <array>
+
 #endif
 #endif
 
@@ -42,17 +44,39 @@ namespace std{
 
 struct MenuV2;
 
+namespace {
+   // print a character string from program memory
+   void print_P(const char *str)
+   {
+     uint8_t val;
+     while (true) {
+       val=pgm_read_byte(str);
+       if (!val) break;
+       Serial.write(val);
+       str++;
+     }
+   }
+
+      // print a character string from program memory
+   void println_P(const char *str)
+   {
+     print_P(str);
+     Serial.println("");
+   }
+}
+
 struct MenuItem {
+
     typedef int8_t  (*function_t)(MenuV2 const & menu, uint8_t argc, char** argv);
     MenuItem(const char* nameIn,const char* infoIn,function_t functionIn)
     : name{nameIn},info{infoIn},function{functionIn}{}
-    const char  * const name;
-    const char  * const info;
+    const char  * const name PROGMEM;
+    const char  * const info PROGMEM;
     function_t const function; 
 };
 
 struct MenuV2{
-   const char * name() const { return m_name;}
+   const char * const name() const { return m_name;}
 
    virtual uint8_t numMenuItems() const = 0;
    virtual MenuItem const & getMenuItem(uint8_t item) const = 0;
@@ -73,14 +97,13 @@ struct MenuV2{
        char * buffer = commandBuffer();
        for (;;){
 #if defined QUAN_ARDUINO
-          Serial.print(m_name) ;
+          print_P(m_name) ;
           Serial.print(']');
 #else
           std::cout << m_name << ']';
 #endif
           bool command_entered = false;
           uint8_t bufIndex = 0;
-          
           while (command_entered == false){
 #if defined QUAN_ARDUINO
           if ( Serial.available()){  
@@ -142,7 +165,7 @@ struct MenuV2{
                         }
                      }else{
 #if defined QUAN_ARDUINO
-                        Serial.println("input too long");
+                        println_P(PSTR("input too long"));
 #else
                         std::cout << "input too long\n";
 #endif
@@ -151,9 +174,9 @@ struct MenuV2{
                      }
                   }else{
 #if defined QUAN_ARDUINO
-                      Serial.println("invalid character (");
+                      println_P(PSTR("invalid character ("));
                       Serial.write(c);
-                      Serial.print(")\n");
+                      Serial.println(")");
 #else
                       std::cout << "invalid character (" << c << ")\n";
 #endif
@@ -192,7 +215,7 @@ private:
                args[argc++] = tok;
           }else{
 #if defined QUAN_ARDUINO
-               Serial.println("too many args");
+            println_P(PSTR("too many args"));
 #else
                std::cout << "too many args\n";
 #endif
@@ -206,24 +229,24 @@ private:
       }
       for ( uint8_t i = 0U; i < numMenuItems() ; ++i){
          auto const & menuItem = getMenuItem(i);
-         if ( strcmp(menuItem.name,args[0]) == 0){
+         if ( strcmp_P(args[0],menuItem.name) == 0){
             return menuItem.function(*this,argc,args);
          }
       }
 #if defined QUAN_ARDUINO
-      Serial.println("cmd not found");
+      println_P(PSTR("cmd not found"));
 #else
       std::cout << "cmd not found\n";
 #endif
       return 1;
    }
 
-   const char* m_name;
-   static MenuItem invalidMenuItem;
+   const char* m_name PROGMEM;
+   static const MenuItem invalidMenuItem;
    static int8_t invalidMenuItemFun(MenuV2 const & menu, uint8_t argc, char** argv)
    {
 #if defined QUAN_ARDUINO
-      Serial.println("invalid menu index - please report");
+      println_P(PSTR("invalid menu index - please report"));
 #else
       std::cout << "invalid menu index - please report\n";
 #endif
@@ -256,7 +279,7 @@ struct MenuImpl : MenuV2{
   private:
    virtual char** menuItemArgs() override { return m_args;}
    virtual char* commandBuffer() override { return m_commandBuffer;}
-   std::array<MenuItem,NumMenuItems> m_menuItems;
+   std::array<MenuItem,NumMenuItems> m_menuItems PROGMEM;
    char* m_args[ArgsMax];
    char m_commandBuffer[CommandlineLenMax ];
 };
@@ -267,9 +290,9 @@ int8_t
 sampleMenuItem(MenuV2 const & menu, uint8_t argc, char ** argv)
 {
 #if defined QUAN_ARDUINO
-   Serial.print("This is menu "); Serial.flush();
-   Serial.print(menu.name());
-   Serial.print(".sampleMenuItem"); Serial.flush();
+   print_P(PSTR("This is menu ")); Serial.flush();
+   print_P(menu.name());
+   print_P(PSTR(".sampleMenuItem")); Serial.flush();
    Serial.print(N);
    Serial.println("");
 #else
@@ -277,7 +300,7 @@ sampleMenuItem(MenuV2 const & menu, uint8_t argc, char ** argv)
 #endif
    if ( argc > 1) {
 #if defined QUAN_ARDUINO
-       Serial.print("args = ");
+       print_P(PSTR("args = "));
 #else
        std::cout << "args = " ;
 #endif
@@ -290,7 +313,8 @@ sampleMenuItem(MenuV2 const & menu, uint8_t argc, char ** argv)
 #endif
             }
 #if defined QUAN_ARDUINO
-            Serial.print(argv[i]); Serial.flush();
+            Serial.print(argv[i]); 
+            Serial.flush();
 #else
             std::cout << argv[i] ;
 #endif
@@ -310,9 +334,10 @@ int8_t menuHelp(MenuV2 const & menu, uint8_t argc, char ** argv)
     for ( uint8_t i = 0U ;i < menu.numMenuItems(); ++i){
        auto const & menuItem = menu[i];
 #if defined QUAN_ARDUINO
-       Serial.print(menuItem.name);Serial.flush();
-       Serial.print(" " );
-       Serial.println(menuItem.info); Serial.flush();
+       print_P(menuItem.name);
+       Serial.print(' ');
+       println_P(menuItem.info); 
+       Serial.flush();
 #else
        std::cout << menuItem.name << " : " << menuItem.info << '\n';
 #endif
@@ -337,35 +362,38 @@ makeMenu( const char* name, MenuItems const & ...  cmds)
 int8_t subMenu( MenuV2 const & menu, uint8_t argc,  char ** argv)
 {
 #if defined QUAN_ARDUINO
-     Serial.println("submenu , type 'help' for list of commands");
+     println_P(PSTR("submenu , type 'help' for list of commands"));
 #else
     std::cout << "submenu , type 'help' for list of commands\n";
 #endif
      makeMenu<32,4>(
-       "subMenu", 
-       MenuItem{"help", "help for this submenu",menuHelp},
-       MenuItem{"submenu1", "sub stuff 1", sampleMenuItem<1>},
-       MenuItem{"submenu2", "sub stuff 2",sampleMenuItem<2>},
-       MenuItem{"menu3", "sub stuff 3",sampleMenuItem<3>} 
+       PSTR("subMenu"), 
+       MenuItem{PSTR("help"), PSTR("help for this submenu"),menuHelp},
+       MenuItem{PSTR("submenu1"),PSTR("sub stuff 1"), sampleMenuItem<1>},
+       MenuItem{PSTR("submenu2"),PSTR("sub stuff 2"),sampleMenuItem<2>},
+       MenuItem{PSTR("menu3"), PSTR("sub stuff 3"),sampleMenuItem<3>} 
     ).run();
 
     return 1;
 }
 
-MenuItem MenuV2::invalidMenuItem{"invalidMenuItem","called when a menu item index is out of range",MenuV2::invalidMenuItemFun};
+const MenuItem MenuV2::invalidMenuItem{
+     "invalidMenuItem",
+     "called when a menu item index is out of range",
+     &MenuV2::invalidMenuItemFun};
 
 void user_menu1()
 {
     auto main_menu = makeMenu<32,4>(
-       "My Menu", 
-       MenuItem{"help","help for this menu",menuHelp},
-       MenuItem{"menu1", "info on menu 1", sampleMenuItem<1>},
-       MenuItem{"menu2", "info on menu 2", sampleMenuItem<2>},
-       MenuItem{"menu2", "info on menu 2", sampleMenuItem<2>},
-       MenuItem{"subMenu", "submenu", subMenu}
+       PSTR("My Menu"), 
+       MenuItem{PSTR("help"),PSTR("help for this menu"),menuHelp},
+       MenuItem{PSTR("menu1"), PSTR("info on menu 1"), sampleMenuItem<1>},
+       MenuItem{PSTR("menu2"), PSTR("info on menu 2"), sampleMenuItem<2>},
+       MenuItem{PSTR("menu3"), PSTR("info on menu 2"), sampleMenuItem<2>},
+       MenuItem{PSTR("subMenu"), PSTR("submenu"), subMenu}
     );
 #if defined QUAN_ARDUINO
-    Serial.println("type 'help' for list of commands");
+    println_P(PSTR("type 'help' for list of commands"));
     Serial.flush();
 #else
     std::cout << "type 'help' for list of commands\n";
