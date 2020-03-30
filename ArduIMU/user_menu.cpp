@@ -20,17 +20,11 @@ namespace {
                return "";
         }
    }
-}
 
-int8_t
-write_compass_stg(storageID id, uint8_t argc, const Menu::arg *argv)
-{
-    Serial.print("set ");
-    Serial.print(get_id_str(id));
-    if ( argc != 4){
+   int8_t set_compass_stg(storageID id, const Menu::arg *argv)
+   {
+       Serial.print("set ");
        Serial.print(get_id_str(id));
-       Serial.print(" - expected 3 args\n");
-    }else{
        Serial.print( " = [");
        quan::three_d::vect<float> value;
        for ( int i = 1; i < 4; ++i){
@@ -44,18 +38,14 @@ write_compass_stg(storageID id, uint8_t argc, const Menu::arg *argv)
           Serial.print(value[i],6);
        }
        Serial.print("]\n");
-    }
-    return 1;
-}
+       return 1;
+   }
 
-int8_t
-read_compass_stg(storageID id, uint8_t argc, const Menu::arg *argv)
-{
-    Serial.print("get ");
-    Serial.print(get_id_str(id));
-    if ( argc != 1){
-       Serial.print(" - unexpected args\n");
-    }else{
+   int8_t
+   show_compass_stg(storageID id)
+   {
+       Serial.print("get ");
+       Serial.print(get_id_str(id));
        quan::three_d::vect<float> value;
        readValueFromStorage(id,value);
        Serial.print( " = [");
@@ -66,39 +56,74 @@ read_compass_stg(storageID id, uint8_t argc, const Menu::arg *argv)
           Serial.print(value[i],6);
        }
        Serial.print("]\n");
-    }
-    return 1;
+       return 1;
+   }
+
+   int8_t unexpected_args()
+   {
+      Serial.print(" - unexpected args\n");
+      return 1;
+   }
+
+   int8_t
+   compass_stg(storageID id, uint8_t argc, const Menu::arg *argv)
+   {
+       switch(argc){
+         case 1:
+            return show_compass_stg(id);
+         case 4:
+            return set_compass_stg(id,argv);
+         default:
+            return unexpected_args();
+       }
+   }
+
+   int8_t show_run_mode()
+   {
+      Serial.print("show run mode TODO\n");
+      return 1;
+   }
+
+   int8_t set_run_mode(long v)
+   {
+      Serial.print("set run mode \" ");
+      Serial.print(v);
+      Serial.print("\" TODO\n");
+      return 1;
+   }
+
+} //namespace 
+
+int8_t
+compass_gain(uint8_t argc, const Menu::arg *argv)
+{
+   return compass_stg(MAG_GAIN,argc,argv);
 }
 
 int8_t
-get_compass_gain(uint8_t argc, const Menu::arg *argv)
+compass_offset(uint8_t argc, const Menu::arg *argv)
 {
-   return read_compass_stg(MAG_GAIN,argc,argv);
+   return compass_stg(MAG_OFST,argc,argv);
 }
 
 int8_t
-get_compass_offset(uint8_t argc, const Menu::arg *argv)
+run_mode(uint8_t argc, const Menu::arg *argv)
 {
-   return read_compass_stg(MAG_OFST,argc,argv);
-}
-
-int8_t
-set_compass_gain(uint8_t argc, const Menu::arg *argv)
-{
-   return write_compass_stg(MAG_GAIN,argc,argv);
-}
-
-int8_t
-set_compass_offset(uint8_t argc, const Menu::arg *argv)
-{
-   return write_compass_stg(MAG_OFST,argc,argv);
+   switch(argc){
+      case 1:
+        return show_run_mode();
+      case 2:
+        return set_run_mode(argv[0].i);
+      default:
+        return unexpected_args();
+   }
+   return 1;
 }
 
 constexpr struct Menu::command main_menu_commands[] = {
-    {"get_mag_gain",   get_compass_gain},
-    {"get_mag_ofst", get_compass_offset},
-    {"set_mag_gain",   set_compass_gain},
-    {"set_mag_ofst", set_compass_offset}
+    {"mag_gain", compass_gain},
+    {"mag_ofst", compass_offset},
+    {"run_mode", run_mode}
 };
 
 MENU(main_menu, "ArduIMU_menu", main_menu_commands);

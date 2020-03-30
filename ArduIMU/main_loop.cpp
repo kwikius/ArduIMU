@@ -77,14 +77,10 @@ extern "C" void setup()
       if ( menu_mode){
            user_menu();
       }
-
       
    }
-
    // read eeprom values
-
    Serial.print("... setup complete\n");
-
 }
 
 namespace{
