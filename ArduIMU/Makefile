@@ -56,7 +56,7 @@ TARGET = ArduIMU
 
 arduino_cpp_objects = CDC.o HardwareSerial.o Print.o Stream.o  WString.o main.o new.o 
 arduino_c_objects = WInterrupts.o wiring.o wiring_digital.o
-local_objects = main_loop.o user_menu1.o storage.o
+local_objects = main_loop.o user_menu1.o storage.o print_P.o
 
 OBJDIR := obj
 BINDIR := bin

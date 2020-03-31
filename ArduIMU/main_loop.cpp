@@ -1,6 +1,7 @@
 
 
 #include <Arduino.h>
+#include "print_P.h"
 
 #include <avr/eeprom.h>
 #include <Wire.h>
@@ -32,7 +33,7 @@ q_millis()
 {
    return quan::time_<unsigned long>::ms{millis()};
 }
-
+#if 0
 namespace {
    // print a character string from program memory
    void print_P(const char *str)
@@ -46,6 +47,7 @@ namespace {
      }
    }
 }
+#endif
 
 extern "C" void setup()
 {
@@ -54,8 +56,8 @@ extern "C" void setup()
 
    //Serial.print_P("ArduIMU setup ...\r");
   // Serial.print_P("[RET] * 3 for menu\n");
-   print_P(PSTR("ArduIMU setup ...\r"));
-   print_P(PSTR("[RET] * 3 for menu\n"));
+   println_P(PSTR("ArduIMU setup ..."));
+   println_P(PSTR("[RET] * 3 for menu"));
 
    pinMode(pinLedRED,OUTPUT); 
    digitalWrite(pinLedRED,HIGH);
@@ -83,7 +85,7 @@ extern "C" void setup()
          auto ch = Serial.read();
          if (ch != '\r'){
             Serial.print(ch);
-            Serial.print(" invalid input\n");
+            println_P(PSTR(" invalid input"));
             menu_mode = false;
             break;
          }
@@ -96,7 +98,7 @@ extern "C" void setup()
       
    }
    // read eeprom values
-   Serial.print("... setup complete\n");
+   println_P(PSTR("... setup complete"));
 }
 
 namespace{
@@ -111,7 +113,7 @@ extern "C" void loop()
 
    if ( (now - prev_time) >= 1000_ms_U ){
       prev_time = now;
-      Serial.print("Alive\n");
+      println_P(PSTR("Alive"));
       if ( pin_state == HIGH){
          digitalWrite(pinLedBLUE,LOW);
          pin_state = LOW;

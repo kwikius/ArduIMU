@@ -1,49 +1,19 @@
 
+#if defined __AVR__
 
-
-
-//#if 1
-
-
-
-
-
-#ifndef QUAN_STD_TR1_ARRAY_HPP_INCLUDED
-#define QUAN_STD_TR1_ARRAY_HPP_INCLUDED
-
-#include <quan/config.hpp>
-
-#if defined QUAN_USE_QUAN_STD_TR1
-
+#include <quan/std/tr1/array.hpp>
 #include <Arduino.h>
-
-
 #define QUAN_ARDUINO
-
-namespace std{
-
-   template<typename T, unsigned int N>
-   struct array{
-      static constexpr unsigned int size() { return N;}
-      template <typename ... Args>
-      constexpr array( Args const & ... args)
-      : m_array{args...}{}
-      T & operator[](int i) { return m_array[i];}
-      constexpr T const & operator[](int i)const { return m_array[i];}
-      T m_array[N];
-   };
-
-}// std
-#else
-#include <array>
-
-#endif
-#endif
-
 #include <string.h>
+#include "print_P.h"
+#else
+#include <cstring>
+#define PROGMEM
+#define PSTR(str) str
+#endif
 
 struct MenuV2;
-
+#if 0
 namespace {
    // print a character string from program memory
    void print_P(const char *str)
@@ -64,11 +34,12 @@ namespace {
      Serial.println("");
    }
 }
+#endif
 
 struct MenuItem {
 
     typedef int8_t  (*function_t)(MenuV2 const & menu, uint8_t argc, char** argv);
-    MenuItem(const char* nameIn,const char* infoIn,function_t functionIn)
+    MenuItem(const char PROGMEM * nameIn,const char PROGMEM * infoIn,function_t functionIn)
     : name{nameIn},info{infoIn},function{functionIn}{}
     const char  * const name PROGMEM;
     const char  * const info PROGMEM;
@@ -76,7 +47,7 @@ struct MenuItem {
 };
 
 struct MenuV2{
-   const char * const name() const { return m_name;}
+   const char PROGMEM * const name() const { return m_name;}
 
    virtual uint8_t numMenuItems() const = 0;
    virtual MenuItem const & getMenuItem(uint8_t item) const = 0;
@@ -241,7 +212,7 @@ private:
       return 1;
    }
 
-   const char* m_name PROGMEM;
+   const char PROGMEM * m_name ;
    static const MenuItem invalidMenuItem;
    static int8_t invalidMenuItemFun(MenuV2 const & menu, uint8_t argc, char** argv)
    {
@@ -354,7 +325,7 @@ int8_t menuHelp(MenuV2 const & menu, uint8_t argc, char ** argv)
 template <uint8_t CommandlineLenMax, uint8_t ArgsMax,typename... MenuItems>
 constexpr
 MenuImpl<CommandlineLenMax,ArgsMax,sizeof...(MenuItems)>
-makeMenu( const char* name, MenuItems const & ...  cmds)
+makeMenu( const char PROGMEM * name, MenuItems const & ...  cmds)
 {
    return MenuImpl<CommandlineLenMax,ArgsMax,sizeof...(MenuItems)>(name,cmds...);
 }
@@ -366,6 +337,7 @@ int8_t subMenu( MenuV2 const & menu, uint8_t argc,  char ** argv)
 #else
     std::cout << "submenu , type 'help' for list of commands\n";
 #endif
+
      makeMenu<32,4>(
        PSTR("subMenu"), 
        MenuItem{PSTR("help"), PSTR("help for this submenu"),menuHelp},
