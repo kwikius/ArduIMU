@@ -371,6 +371,5 @@ void user_menu1()
     std::cout << "type 'help' for list of commands\n";
 #endif
     main_menu.run();
-
 }
 
