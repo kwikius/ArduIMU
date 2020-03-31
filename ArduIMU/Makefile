@@ -54,9 +54,9 @@ DEFINES = -DARDUINO=100
 
 TARGET = ArduIMU
 
-arduino_cpp_objects = CDC.o HardwareSerial.o Print.o Stream.o  WString.o main.o new.o 
+arduino_cpp_objects = CDC.o HardwareSerial.o Print.o Stream.o WString.o main.o new.o 
 arduino_c_objects = WInterrupts.o wiring.o wiring_digital.o
-local_objects = main_loop.o user_menu1.o storage.o print_P.o
+local_objects = main_loop.o user_menu.o storage.o print_P.o menu.o HMC5883.o
 
 OBJDIR := obj
 BINDIR := bin
@@ -66,18 +66,18 @@ ARDUINO_CPP_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_cpp_objects))
 LOCAL_OBJECTS = $(addprefix $(OBJDIR)/,$(local_objects))
 
 OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) $(LOCAL_OBJECTS) \
- $(OBJDIR)/eeprom.o
+ $(OBJDIR)/eeprom.o  $(OBJDIR)/wire.o $(OBJDIR)/twi.o
 
 # $(OBJDIR)/menu.o 
 
 INCLUDES = -I$(QUAN_INCLUDE_PATH) -I$(ARDUINO_SRC_PATH) -I$(ARDUINO_EXTRA_PATH) \
  -I$(ARDUINO_PATH)libraries/Wire/ \
+ -I$(ARDUINO_PATH)libraries/Wire/utility \
  -I$(ARDUINO_PATH)libraries/SPI/ \
  -I$(ARDUINO_PATH)libraries/EEPROM/ \
  -Ilibraries/AP_GPS/
 
  #-Ilibraries/Menu/ \
-
 
 ELFFILE =     $(BINDIR)/$(TARGET).elf
 HEXFILE =     $(BINDIR)/$(TARGET).hex
@@ -92,7 +92,8 @@ OD  = avr-objdump
 SIZ = avr-size
 PROG = avrdude
 
-CFLAGS_C = -Wall -mmcu=$(ARDUINO_MCU) $(INCLUDES) -ffunction-sections -fdata-sections $(DEFINES) -DF_CPU=$(ARDUINO_FCPU) -Os 
+CFLAGS_C = -Wall -mmcu=$(ARDUINO_MCU) $(INCLUDES) -ffunction-sections -fdata-sections $(DEFINES) -DF_CPU=$(ARDUINO_FCPU) -Os \
+-Wno-attributes
 
 CFLAGS_CPP = $(CFLAGS_C) --std=c++11 -fno-rtti -fno-exceptions -Wfatal-errors -Wno-unused-local-typedefs
 
@@ -116,6 +117,12 @@ $(ARDUINO_CPP_OBJECTS) : $(OBJDIR)/%.o : $(ARDUINO_SRC_PATH)%.cpp
 
 $(OBJDIR)/eeprom.o : $(ARDUINO_PATH)libraries/EEPROM/EEPROM.cpp
 	$(CC) $(CFLAGS_CPP) -c $< -o $@
+
+$(OBJDIR)/wire.o : $(ARDUINO_PATH)libraries/Wire/Wire.cpp
+	$(CC) $(CFLAGS_CPP) -c $< -o $@
+
+$(OBJDIR)/twi.o : $(ARDUINO_PATH)libraries/Wire/utility/twi.c
+	$(CC1) $(CFLAGS_C) -c $< -o $@
 
 $(ARDUINO_C_OBJECTS) : $(OBJDIR)/%.o : $(ARDUINO_SRC_PATH)%.c
 	$(CC1) $(CFLAGS_C) -c $< -o $@

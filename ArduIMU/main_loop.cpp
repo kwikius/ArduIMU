@@ -1,5 +1,4 @@
 
-
 #include <Arduino.h>
 #include "print_P.h"
 
@@ -7,12 +6,12 @@
 #include <Wire.h>
 #include <SPI.h>
 
-#include <AP_GPS.h>			// ArduPilot GPS library
-
 #include <quan/length.hpp>
 #include <quan/time.hpp>
 
-void user_menu1();
+#include "HMC5883.h"
+
+void user_menu();
 
 // Pins on ArduIMU_V3 are numbered 
 // as Arduino Pro Mini
@@ -33,29 +32,12 @@ q_millis()
 {
    return quan::time_<unsigned long>::ms{millis()};
 }
-#if 0
-namespace {
-   // print a character string from program memory
-   void print_P(const char *str)
-   {
-     uint8_t val;
-     while (true) {
-       val=pgm_read_byte(str);
-       if (!val) break;
-       Serial.write(val);
-       str++;
-     }
-   }
-}
-#endif
 
 extern "C" void setup()
 {
    // Serial in has 64 byte buffer
    Serial.begin(38400);
 
-   //Serial.print_P("ArduIMU setup ...\r");
-  // Serial.print_P("[RET] * 3 for menu\n");
    println_P(PSTR("ArduIMU setup ..."));
    println_P(PSTR("[RET] * 3 for menu"));
 
@@ -77,6 +59,8 @@ extern "C" void setup()
    delay(500);
    digitalWrite(pinLedRED,LOW);
 
+   HMC5883_init();
+
    // look for user input
    if ( Serial.available() >= 3){
 
@@ -93,7 +77,7 @@ extern "C" void setup()
       // menu mode
       // calibration of magnetometer
       if ( menu_mode){
-           user_menu1();
+           user_menu();
       }
       
    }
@@ -103,23 +87,53 @@ extern "C" void setup()
 
 namespace{
    QUAN_QUANTITY_LITERAL(time,ms)
-   auto prev_time = 0_ms_U;
+   auto prev_led = 0_ms_U;
+   auto prev_read = 0_ms_U;
    auto pin_state = HIGH;
+   enum mag_read_state_t {
+      idle,
+      waiting_for_ready,
+   }mag_read_state = idle;
 }
 
 extern "C" void loop()
 {
    auto const now = q_millis();
 
-   if ( (now - prev_time) >= 1000_ms_U ){
-      prev_time = now;
-      println_P(PSTR("Alive"));
+   if ( mag_read_state == idle){
+      if ( (now - prev_read) >= 50_ms_U ){
+         prev_read = now;
+         bool result = HMC5883_start_measurement();
+         if (result){
+            mag_read_state = waiting_for_ready;
+         }else{
+            println_P(PSTR("mag start measurement failed"));
+         }
+      }
+   }else{
+      if ( HMC5883_data_ready()){
+         quan::three_d::vect<quan::magnetic_flux_density::uT>  result;
+         if ( HMC5883_read(result) ){
+            print_P(PSTR("mag = ["));
+            Serial.print(result.x.numeric_value());
+            Serial.print(", ");
+            Serial.print(result.y.numeric_value());
+            Serial.print(", ");
+            Serial.print(result.z.numeric_value());
+            Serial.println("]");
+         }
+         mag_read_state = idle;
+      }
+   }
+
+   if( (now - prev_led) >= 1000_ms_U ){
+      prev_led = now;
       if ( pin_state == HIGH){
-         digitalWrite(pinLedBLUE,LOW);
          pin_state = LOW;
+         digitalWrite(pinLedRED,LOW);
       }else{
-         digitalWrite(pinLedBLUE,HIGH);
          pin_state = HIGH;
+         digitalWrite(pinLedRED,HIGH);
       }
    }
 }
