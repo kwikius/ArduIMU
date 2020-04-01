@@ -13,6 +13,9 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "HMC5883.h"
+#include "print_P.h"
+
+#include "storage.h"
 
 #include <quan/fixed_quantity/literal.hpp>
 
@@ -33,13 +36,21 @@ namespace {
 
    quan::magnetic_flux_density::uT constexpr mag_resolution = 0.73_milli_gauss;
 
-   quan::three_d::vect<quan::magnetic_flux_density::uT> mag_offset;
+   quan::three_d::vect<quan::magnetic_flux_density_<float>::uT> mag_offset;
 
    quan::three_d::vect<float> mag_gain{1.f,1.f,1.f};
 }
 
 bool HMC5883_init()
 {
+
+  bool mag_calibrated = false;
+  readValueFromStorage(MAG_CALIBRATED,mag_calibrated);
+  if ( mag_calibrated){
+      // technically a float in eeprom but should be OK
+      readValueFromStorage(MAG_OFST,mag_offset);
+      readValueFromStorage(MAG_GAIN,mag_gain);
+  }
   delay(100);
   Wire.begin();
 
@@ -74,37 +85,42 @@ bool HMC5883_data_ready()
    return result;
 }
 
-bool HMC5883_read( quan::three_d::vect<quan::magnetic_flux_density::uT> & result)
+bool HMC5883_read( quan::three_d::vect<quan::magnetic_flux_density::uT> & result, mag_output_style_t output_style)
+
 {
-  int i = 0;
-  byte buff[6];
+   int i = 0;
+   byte buff[6];
 
-  Wire.beginTransmission(i2c_address);
-  Wire.write(dataStart);  
-  Wire.endTransmission();
+   Wire.beginTransmission(i2c_address);
+   Wire.write(dataStart);  
+   Wire.endTransmission();
 
-  Wire.requestFrom(i2c_address, static_cast<uint8_t>(6));    // request 6 bytes from device
-  while(Wire.available()){
-     buff[i] = Wire.read();  
-     i++;
-  }
-  Wire.endTransmission(); 
+   Wire.requestFrom(i2c_address, static_cast<uint8_t>(6));    // request 6 bytes from device
+   while(Wire.available()){
+      buff[i] = Wire.read();  
+      i++;
+   }
+   Wire.endTransmission(); 
 
-  quan::three_d::vect<int16_t> mag;
-  if (i==6){  // All bytes received?
-    // MSB byte first, then LSB
-    mag.x = (((int16_t)buff[0]) << 8) | buff[1] ;    // X axis
-    mag.y = (((int16_t)buff[4]) << 8) | buff[5] ;    // Y axis
-    mag.z = (((int16_t)buff[2]) << 8) | buff[3] ;    // Z axis
-  }
+   quan::three_d::vect<int16_t> mag;
+   if (i == 6){  // All bytes received?
+      // MSB byte first, then LSB
+      mag.x = (((int16_t)buff[0]) << 8) | buff[1] ;    // X axis
+      mag.y = (((int16_t)buff[4]) << 8) | buff[5] ;    // Y axis
+      mag.z = (((int16_t)buff[2]) << 8) | buff[3] ;    // Z axis
 
-  auto temp = mag * mag_resolution ;
-
-  temp.x *= mag_gain.x;
-  temp.y *= mag_gain.y;
-  temp.z *= mag_gain.z;
-
-  result = temp - mag_offset;
-
-  return true;
+      auto temp = mag * mag_resolution ;
+      if ( output_style == MagOutputCalibrated_uT){
+         temp.x *= mag_gain.x;
+         temp.y *= mag_gain.y;
+         temp.z *= mag_gain.z;
+         result = temp - mag_offset;
+      }else{
+         result = temp;
+      }
+      return true;
+   }else{
+      println_P(PSTR("read mag failed"));
+      return false;
+   }
 }

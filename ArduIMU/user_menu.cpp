@@ -124,6 +124,37 @@ run_mode(quan::duino::Menu const & menu, uint8_t argc, char** argv)
    return 1;
 }
 
+int8_t mag_cal(quan::duino::Menu const & menu, uint8_t argc, char** argv)
+{
+   bool value = false;
+   switch(argc){
+      case 1:
+       readValueFromStorage(MAG_CALIBRATED,value);
+       print_P(PSTR("mag calibrated = "));
+       if ( value){
+         println_P(PSTR("true"));
+       }else{
+         println_P(PSTR("false"));
+       }
+       break;
+      case 2: 
+         if ( strcmp_P(argv[1],PSTR("true")) == 0){
+             value = true;
+         }else {
+           if (strcmp_P(argv[1],PSTR("false")) == 0 ){
+              value = false;
+           }else {
+               return unexpected_args();
+           }
+         }
+         writeValueToStorage(MAG_CALIBRATED,value);
+         break;
+      default:
+        return unexpected_args();
+   }
+   return 1;
+}
+
 int8_t menuHelp(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
 {
     for ( uint8_t i = 0U ;i < menu.numMenuItems(); ++i){
@@ -145,6 +176,7 @@ void user_menu()
        quan::duino::MenuItem{PSTR("help"),PSTR("help on commands"),menuHelp},
        quan::duino::MenuItem{PSTR("mag_gain"),PSTR("get/set mag gain"),compass_gain},
        quan::duino::MenuItem{PSTR("mag_ofst"),PSTR("get/set mag offset"), compass_offset},
+       quan::duino::MenuItem{PSTR("mag_calb"),PSTR("get set mag calibrated true/false"),mag_cal},
        quan::duino::MenuItem{PSTR("run_mode"),PSTR("get/set run_mode"),run_mode}
     );
 

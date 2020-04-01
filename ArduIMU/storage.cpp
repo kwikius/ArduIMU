@@ -10,18 +10,21 @@
 namespace {
 
    enum storageType  {
-         Vect3F
+         Vect3F,
+         Bool
    };
  
    // idx by casting storageType to uint16_t
    constexpr uint16_t storageSizeFromType[] = {
-        sizeof(quan::three_d::vect<float>) // [ Vect3F ]
+        sizeof(quan::three_d::vect<float>), // [ Vect3F ]
+        sizeof(bool)                        // [ Bool ]
    };
 
    //The types indexed by underlying idx storageID
    constexpr storageType storageTypes[] = {
-         Vect3F, // [ MAG_OFST ] 
-         Vect3F  // [ MAG_GAIN ]
+         Vect3F, //  [ MAG_OFST ] 
+         Vect3F,  // [ MAG_GAIN ]
+         Bool     // [ MAG_CALIBRATED ]
    };
 
    // gives a bit of space at start of eeprom for 

@@ -101,7 +101,7 @@ extern "C" void loop()
    auto const now = q_millis();
 
    if ( mag_read_state == idle){
-      if ( (now - prev_read) >= 50_ms_U ){
+      if ( (now - prev_read) >= 100_ms_U ){
          prev_read = now;
          bool result = HMC5883_start_measurement();
          if (result){
@@ -113,14 +113,18 @@ extern "C" void loop()
    }else{
       if ( HMC5883_data_ready()){
          quan::three_d::vect<quan::magnetic_flux_density::uT>  result;
-         if ( HMC5883_read(result) ){
-            print_P(PSTR("mag = ["));
+         if ( HMC5883_read(result,MagOutputCalibrated_uT) ){
+            // magR_uT = mag raw uT
+            // magC_uT  = mag calibrated in uT
+            // Only MagR will be sent if the mag isnt calibrated
+           // print_P(PSTR("magR_uT "));
+            print_P(PSTR("val = ["));
             Serial.print(result.x.numeric_value());
-            Serial.print(", ");
+            Serial.print(" uT, ");
             Serial.print(result.y.numeric_value());
-            Serial.print(", ");
+            Serial.print(" uT, ");
             Serial.print(result.z.numeric_value());
-            Serial.println("]");
+            Serial.println(" uT]");
          }
          mag_read_state = idle;
       }
