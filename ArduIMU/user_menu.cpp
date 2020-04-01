@@ -168,6 +168,13 @@ int8_t menuHelp(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
     return 1;
 }
 
+// return -1 to quit
+int8_t menuExit(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
+{
+   println_P(PSTR("quitting..."));
+   return -1;
+}
+
 void user_menu()
 {
    println_P(PSTR("type 'help' for command help"));
@@ -177,7 +184,8 @@ void user_menu()
        quan::duino::MenuItem{PSTR("mag_gain"),PSTR("get/set mag gain"),compass_gain},
        quan::duino::MenuItem{PSTR("mag_ofst"),PSTR("get/set mag offset"), compass_offset},
        quan::duino::MenuItem{PSTR("mag_calb"),PSTR("get set mag calibrated true/false"),mag_cal},
-       quan::duino::MenuItem{PSTR("run_mode"),PSTR("get/set run_mode"),run_mode}
+       quan::duino::MenuItem{PSTR("run_mode"),PSTR("get/set run_mode"),run_mode},
+       quan::duino::MenuItem{PSTR("exit"),PSTR("exit the menu"),menuExit}
     );
 
     main_menu.run();

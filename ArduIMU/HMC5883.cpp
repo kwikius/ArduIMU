@@ -43,7 +43,6 @@ namespace {
 
 bool HMC5883_init()
 {
-
   bool mag_calibrated = false;
   readValueFromStorage(MAG_CALIBRATED,mag_calibrated);
   if ( mag_calibrated){
@@ -51,10 +50,9 @@ bool HMC5883_init()
       readValueFromStorage(MAG_OFST,mag_offset);
       readValueFromStorage(MAG_GAIN,mag_gain);
   }
-  delay(100);
+  // give compass circuit time to power up
+  while (millis() < 500U){ asm volatile ("nop":::);}
   Wire.begin();
-
-  // TODO: read mag offsets and gains from eeprom
 
   Wire.beginTransmission(i2c_address);
   Wire.write(configRegA);

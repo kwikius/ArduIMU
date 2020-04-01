@@ -22,6 +22,9 @@ namespace quan { namespace duino{
 
    struct MenuItem {
 
+       // menu_item function
+       // return value -1 to quit
+       // 
        typedef int8_t  (*function_t)(Menu const & menu, uint8_t argc, char** argv);
        MenuItem(const char PROGMEM * nameIn,const char PROGMEM * infoIn,function_t functionIn)
        : name{nameIn},info{infoIn},function{functionIn}{}
@@ -83,7 +86,6 @@ namespace quan { namespace duino{
       char* m_args[ArgsMax];
       char m_commandBuffer[CommandlineLenMax ];
    };
-
 
    // Use this function to ease constructing a menu
    template <uint8_t CommandlineLenMax, uint8_t ArgsMax,typename... MenuItems>

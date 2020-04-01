@@ -1,20 +1,12 @@
 
 #include <Arduino.h>
 #include "print_P.h"
-
-#include <avr/eeprom.h>
-#include <Wire.h>
-#include <SPI.h>
-
-#include <quan/length.hpp>
 #include <quan/time.hpp>
-
 #include "HMC5883.h"
 
 void user_menu();
 
-// Pins on ArduIMU_V3 are numbered 
-// as Arduino Pro Mini
+/// Pins on ArduIMU_V3 are numbered as Arduino Pro Mini
 namespace {
    // multiplex between Console I/O and GPS
    int constexpr pinSerialMux = 7;
