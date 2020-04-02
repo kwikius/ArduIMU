@@ -51,7 +51,7 @@ extern "C" void setup()
    delay(500);
    digitalWrite(pinLedRED,LOW);
 
-   HMC5883_init();
+   digitalWrite(pinLedBLUE,LOW);
 
    // look for user input
    if ( Serial.available() >= 3){
@@ -66,15 +66,15 @@ extern "C" void setup()
             break;
          }
       }
-      // menu mode
-      // calibration of magnetometer
+
       if ( menu_mode){
            user_menu();
       }
-      
    }
+   HMC5883_init();
    // read eeprom values
    println_P(PSTR("... setup complete"));
+
 }
 
 namespace{
@@ -106,23 +106,20 @@ extern "C" void loop()
       if ( HMC5883_data_ready()){
          quan::three_d::vect<quan::magnetic_flux_density::uT>  result;
          if ( HMC5883_read(result,MagOutputCalibrated_uT) ){
-            // magR_uT = mag raw uT
-            // magC_uT  = mag calibrated in uT
-            // Only MagR will be sent if the mag isnt calibrated
-           // print_P(PSTR("magR_uT "));
-            print_P(PSTR("val = ["));
+
+            print_P(PSTR("mag "));
             Serial.print(result.x.numeric_value());
-            Serial.print(" uT, ");
+            Serial.print(' ');
             Serial.print(result.y.numeric_value());
-            Serial.print(" uT, ");
+            Serial.print(' ');
             Serial.print(result.z.numeric_value());
-            Serial.println(" uT]");
+            Serial.println("");
          }
          mag_read_state = idle;
       }
    }
 
-   if( (now - prev_led) >= 1000_ms_U ){
+   if( (now - prev_led) >= 500_ms_U ){
       prev_led = now;
       if ( pin_state == HIGH){
          pin_state = LOW;

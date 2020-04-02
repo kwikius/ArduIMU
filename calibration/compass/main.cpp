@@ -56,10 +56,9 @@ bool create_sim_mag_data(
     // TODO x y z scales
 );
 
-
 /*
   not the best. Relies on having points near min and max Really want to fit a 3d ellipse.
-   
+  For accuracy look at pointset in gnuplot to check coverage.
 */
 quan::three_d::vect<double> calculate_extents(std::vector<quan::three_d::vect<double> > const & point_cloud)
 {
@@ -69,14 +68,14 @@ quan::three_d::vect<double> calculate_extents(std::vector<quan::three_d::vect<do
       for ( auto const & p : point_cloud)
       {
           pmin.x = quan::min(p.x,pmin.x);
-          pmin.y = quan::min(p.y,pmin.y);
-          pmin.z = quan::min(p.z,pmin.z);
-
           pmax.x = quan::max(p.x,pmax.x);
+
+          pmin.y = quan::min(p.y,pmin.y);
           pmax.y = quan::max(p.y,pmax.y);
+
+          pmin.z = quan::min(p.z,pmin.z);
           pmax.z = quan::max(p.z,pmax.z);
       }
-
       return pmax - pmin;
 }
 
@@ -86,18 +85,27 @@ bool get_file_real_mag_data( std::ifstream & in, std::vector<quan::three_d::vect
       std::string str;
       quan::three_d::vect<double> v;
       in >> str;
-      if ( str != "magR_uT"){
-         std::cout << "expected raw mag sig\n";
-         return false;
+      if (str == ""){continue;}
+      if ( str == "mag"){
+         in >> v.x >> v.y >> v.z;
+         points_cloud_out.push_back(v);
       }
-      in >> v.x >> v.y >> v.z;
-      std::cout << v <<'\n';
-      points_cloud_out.push_back(v);
+
    }
+      if (points_cloud_out.size() < 50){
+         std::cout << "Warning : small number of points\n";
+      }
    return true;
 }
 
- 
+/**  Compass calibration algorithm
+*    Read raw point data from file
+*    Find extents in x, y, z
+*    Use local magnetic field density data and extents to work out 
+*    gain in z,y,z required to squish the data into a sphere
+*    multiply points by gain
+*    call sphere fit algorithm.
+*/
 int main(int argc, char const * argv[])
 {
    std::vector<quan::three_d::vect<double> > point_cloud;
@@ -170,6 +178,14 @@ int main(int argc, char const * argv[])
      out << p1.x << " " << p1.y << " " << p1.z << "\n";
   }
 
-  std::cout << "output written\n";
+  std::cout << "output written to output.dat\n";
+  std::cout << "invoke \'gnuplot\'\n";
+  std::cout << "type \'set view equal xyz\' to get equal size x y z axes.\n";
+  std::cout << "type \'splot \"output.dat\"\' to view points in 3d graph.\n";
+  std::cout << "Fly around graph with mouse\n";
+
+  
+
+  
 
 }

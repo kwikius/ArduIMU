@@ -105,8 +105,28 @@ namespace {
  vect the_value;
 }
 
+// sp_input_string contains
+// mag x y z
 int parse_string()
 {
+   std::istringstream istr(sp_input_string);
+
+   std::string id;
+   int result = 0;
+   istr >> id;
+
+   if ( id == "mag"){
+      istr >> the_value.x >> the_value.y >> the_value.z ;
+      // sign fix up
+      // the_value.x *= -1;
+      the_value.y *= -1;
+      //the_value.z *= -1;
+      result = 1;
+   }
+
+   sp_input_string = "";
+   return result;
+ /*
    while ( sp_input_string.length() ){
       if ( isspace(sp_input_string.at(0))){
          sp_input_string = sp_input_string.substr(1,sp_input_string.npos);
@@ -143,8 +163,10 @@ int parse_string()
            }
       }
    }
+
    sp_input_string = "";
    return result;
+   */
 }
 
 int parse_sp(quan::serial_port& sp, quan::three_d::vect<double> & out)
