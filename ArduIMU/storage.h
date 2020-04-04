@@ -4,7 +4,8 @@
 enum storageID  {
      MAG_OFST,
      MAG_GAIN ,
-     MAG_CALIBRATED
+     MAG_CALIBRATED,
+     RUN_MODE
 };
 
 bool readFromStorage(uint16_t storageAddress, uint8_t* runtimeAddress, uint16_t numBytes);

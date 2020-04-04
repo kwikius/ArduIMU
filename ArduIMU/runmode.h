@@ -7,10 +7,17 @@
 
 */
 
-enum runmode {
-   
-   runmodeRawMagOutput, // x y z as string floaying point
-   runmodeCorrectedMagOutput
+struct runmode{
+
+   // overall runtime state
+   static constexpr  uint8_t bitMagOutput = (1U << 0U);
+   static constexpr uint8_t  bitAccelOutput = (1U << 1U);
+   static constexpr uint8_t  bitGyroOutput = (1U << 2U);
+
+   static uint8_t value ;//= bitMagOutput | bitAccelOutput | bitGyroOutput;
+
 };
+
+void runmodeInit();
 
 #endif // ARDUIMU_RUNMODE_H_INCLUDED

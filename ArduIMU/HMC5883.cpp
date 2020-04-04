@@ -41,7 +41,7 @@ namespace {
    quan::three_d::vect<float> mag_gain{1.f,1.f,1.f};
 }
 
-bool HMC5883_init()
+bool HMC5883init()
 {
   bool mag_calibrated = false;
   readValueFromStorage(MAG_CALIBRATED,mag_calibrated);
@@ -61,7 +61,7 @@ bool HMC5883_init()
   return true;
 }
 
-bool HMC5883_start_measurement()
+bool HMC5883startMeasurement()
 {
   Wire.beginTransmission(i2c_address);
   Wire.write(modeReg);
@@ -70,7 +70,7 @@ bool HMC5883_start_measurement()
   return true;
 }
 
-bool HMC5883_data_ready()
+bool HMC5883dataReady()
 {
    Wire.beginTransmission(i2c_address);
    Wire.write(statusReg);
@@ -83,7 +83,7 @@ bool HMC5883_data_ready()
    return result;
 }
 
-bool HMC5883_read( quan::three_d::vect<quan::magnetic_flux_density::uT> & result, mag_output_style_t output_style)
+bool HMC5883read( quan::three_d::vect<quan::magnetic_flux_density::uT> & result, mag_output_style_t output_style)
 
 {
    int i = 0;

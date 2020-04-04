@@ -56,7 +56,7 @@ TARGET = ArduIMU
 
 arduino_cpp_objects = CDC.o HardwareSerial.o Print.o Stream.o WString.o main.o new.o 
 arduino_c_objects = WInterrupts.o wiring.o wiring_digital.o
-local_objects = main_loop.o user_menu.o storage.o print_P.o menu.o HMC5883.o
+local_objects = main_loop.o user_menu.o storage.o print_P.o menu.o HMC5883.o MPU6000.o
 
 OBJDIR := obj
 BINDIR := bin
@@ -66,7 +66,7 @@ ARDUINO_CPP_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_cpp_objects))
 LOCAL_OBJECTS = $(addprefix $(OBJDIR)/,$(local_objects))
 
 OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) $(LOCAL_OBJECTS) \
- $(OBJDIR)/eeprom.o  $(OBJDIR)/wire.o $(OBJDIR)/twi.o
+ $(OBJDIR)/eeprom.o  $(OBJDIR)/wire.o $(OBJDIR)/twi.o $(OBJDIR)/spi.o
 
 # $(OBJDIR)/menu.o 
 
@@ -119,6 +119,9 @@ $(OBJDIR)/eeprom.o : $(ARDUINO_PATH)libraries/EEPROM/EEPROM.cpp
 	$(CC) $(CFLAGS_CPP) -c $< -o $@
 
 $(OBJDIR)/wire.o : $(ARDUINO_PATH)libraries/Wire/Wire.cpp
+	$(CC) $(CFLAGS_CPP) -c $< -o $@
+
+$(OBJDIR)/spi.o : $(ARDUINO_PATH)libraries/SPI/SPI.cpp
 	$(CC) $(CFLAGS_CPP) -c $< -o $@
 
 $(OBJDIR)/twi.o : $(ARDUINO_PATH)libraries/Wire/utility/twi.c

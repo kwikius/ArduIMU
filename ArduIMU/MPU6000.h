@@ -1,5 +1,32 @@
-// MPU6000 support for AruduIMU V3
-#include <SPI.h>
+
+#ifndef QUAN_ARDUIMU_MPU6000_HPP_INCLUDED
+#define QUAN_ARDUIMU_MPU6000_HPP_INCLUDED
+
+#include <quan/angle.hpp>
+
+#include <quan/three_d/vect.hpp>
+#include <quan/acceleration.hpp>
+#include <quan/reciprocal_time.hpp>
+
+
+struct mpu6000data{
+   typedef quan::angle_<float>::deg deg;
+   typedef quan::reciprocal_time_<deg>::per_s deg_per_s;
+   mpu6000data():gyro{
+         deg_per_s{deg{0.0}},
+         deg_per_s{deg{0.0}},
+         deg_per_s{deg{0.0}}
+   }{}
+   
+   quan::three_d::vect<quan::acceleration_<float>::m_per_s2> accel;
+   quan::three_d::vect<deg_per_s> gyro;
+};
+
+void MPU6000init();
+bool MPU6000dataReady();
+void MPU6000read(mpu6000data & result);
+
+#if 0
 
 #define MPU6000_CHIP_SELECT_PIN 4  // MPU6000 CHIP SELECT
 
@@ -55,7 +82,7 @@
 #define	BIT_I2C_IF_DIS              0x10
 
 // global variables
-volatile uint8_t MPU6000_newdata;
+
 
 //Sensor variables
 int accelX;
@@ -65,3 +92,7 @@ int accelZ;
 int gyroX;
 int gyroY;
 int gyroZ;
+
+#endif
+
+#endif

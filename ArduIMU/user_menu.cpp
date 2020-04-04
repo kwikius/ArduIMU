@@ -6,8 +6,16 @@
 #include "menu.hpp"
 
 #include "storage.h"
+#include "runmode.h"
 
 #include <quan/three_d/vect.hpp>
+
+uint8_t runmode::value = 0;
+
+void runmodeInit()
+{
+   readValueFromStorage(RUN_MODE,runmode::value);
+}
 
 namespace {
 
@@ -83,16 +91,55 @@ namespace {
 
    int8_t show_run_mode()
    {
-      print_P(PSTR("show run mode TODO\n"));
+      uint8_t runMode = 0U;
+      print_P(PSTR("runmode ="));
+   //  Serial.println(runMode);
+      readValueFromStorage(RUN_MODE,runMode);
+     // Serial.println(runMode);
+      
+      if ( runMode == 0){
+         println_P(PSTR(" no data output"));
+      }else{
+         if ( runMode & runmode::bitMagOutput){
+             print_P(PSTR(" mag"));
+         }
+         if ( runMode & runmode::bitAccelOutput){
+             print_P(PSTR(" acc"));
+         }
+         if ( runMode & runmode::bitGyroOutput){
+             print_P(PSTR(" gyr"));
+         }
+         Serial.println("");
+      }
       return 1;
+      
    }
 
-   int8_t set_run_mode(long v)
+   int8_t set_run_mode(uint8_t argc, char** argv)
    {
-      print_P(PSTR("set run mode \" "));
-      Serial.print(v);
-      print_P(PSTR("\" TODO\n"));
-      Serial.flush();
+      print_P(PSTR("set runmode ="));
+      uint8_t runMode = 0U;
+      for ( uint8_t i = 1; i < argc ; ++i){
+         if (strcmp_P(argv[i],PSTR("mag")) == 0){
+            runMode |= runmode::bitMagOutput;
+            print_P(PSTR(" mag"));
+         }
+         else if (strcmp_P(argv[i],PSTR("acc")) == 0){
+            runMode |= runmode::bitAccelOutput;
+            print_P(PSTR(" acc"));
+         }
+         else if (strcmp_P(argv[i],PSTR("gyr")) == 0){
+            runMode |= runmode::bitGyroOutput;
+            print_P(PSTR(" gyr"));
+         }
+         else {
+            return unexpected_args();
+         }
+      }
+     // Serial.println(static_cast<int>(runMode));
+      writeValueToStorage(RUN_MODE,runMode);
+     // Serial.println(runMode);
+      Serial.println("");
       return 1;
    }
 
@@ -117,7 +164,9 @@ run_mode(quan::duino::Menu const & menu, uint8_t argc, char** argv)
       case 1:
         return show_run_mode();
       case 2:
-        return set_run_mode(atol(argv[0]));
+      case 3:
+      case 4:
+        return set_run_mode(argc, argv);
       default:
         return unexpected_args();
    }
@@ -178,13 +227,13 @@ int8_t menuExit(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
 void user_menu()
 {
    println_P(PSTR("type 'help' for command help"));
-   auto main_menu = quan::duino::makeMenu<32,4>(
+   auto main_menu = quan::duino::makeMenu<48,4>(
        PSTR("ArduIMU menu"), 
        quan::duino::MenuItem{PSTR("help"),PSTR("help on commands"),menuHelp},
        quan::duino::MenuItem{PSTR("mag_gain"),PSTR("get/set mag gain"),compass_gain},
        quan::duino::MenuItem{PSTR("mag_ofst"),PSTR("get/set mag offset"), compass_offset},
        quan::duino::MenuItem{PSTR("mag_calb"),PSTR("get set mag calibrated true/false"),mag_cal},
-       quan::duino::MenuItem{PSTR("run_mode"),PSTR("get/set run_mode"),run_mode},
+       quan::duino::MenuItem{PSTR("run_mode"),PSTR("get/set run_mode [mag] [acc] [gyr]"),run_mode},
        quan::duino::MenuItem{PSTR("exit"),PSTR("exit the menu"),menuExit}
     );
 

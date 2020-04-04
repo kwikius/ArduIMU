@@ -3,6 +3,9 @@
 #include <EEPROM.h>
 #include <quan/three_d/vect.hpp>
 #include "storage.h"
+#include "runmode.h"
+
+
 
 /* ArduIMU storage */
 
@@ -11,20 +14,23 @@ namespace {
 
    enum storageType  {
          Vect3F,
-         Bool
+         Bool,
+         Uint8
    };
  
    // idx by casting storageType to uint16_t
    constexpr uint16_t storageSizeFromType[] = {
         sizeof(quan::three_d::vect<float>), // [ Vect3F ]
-        sizeof(bool)                        // [ Bool ]
+        sizeof(bool)   ,                     // [ Bool ]
+        sizeof(uint8_t)                     // [ Uint8]
    };
 
    //The types indexed by underlying idx storageID
    constexpr storageType storageTypes[] = {
          Vect3F, //  [ MAG_OFST ] 
          Vect3F,  // [ MAG_GAIN ]
-         Bool     // [ MAG_CALIBRATED ]
+         Bool,     // [ MAG_CALIBRATED ]
+         Uint8     // [ RUNMODE ]
    };
 
    // gives a bit of space at start of eeprom for 

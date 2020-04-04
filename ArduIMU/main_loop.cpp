@@ -3,6 +3,8 @@
 #include "print_P.h"
 #include <quan/time.hpp>
 #include "HMC5883.h"
+#include "MPU6000.h"
+#include "runmode.h"
 
 void user_menu();
 
@@ -71,31 +73,47 @@ extern "C" void setup()
            user_menu();
       }
    }
-   HMC5883_init();
+   HMC5883init();
+   MPU6000init();
+
+   runmodeInit();
    // read eeprom values
    println_P(PSTR("... setup complete"));
 
 }
 
 namespace{
+
    QUAN_QUANTITY_LITERAL(time,ms)
+
+// led runtime state
    auto prev_led = 0_ms_U;
    auto prev_read = 0_ms_U;
    auto pin_state = HIGH;
+
+
+// mag runtime state
+
+   auto  mag_update_period = 100_ms_U;
    enum mag_read_state_t {
       idle,
       waiting_for_ready,
    }mag_read_state = idle;
+
+//// overall runtime state
+//   uint8_t constexpr output_mag_bit = (1U << 0U);
+//   uint8_t constexpr output_accel_bit = (1U << 1U);
+//   uint8_t constexpr output_gyro_bit = (1U << 2U);
+//
+//   uint8_t mode_bits = output_mpu_bit | output_mag_bit;
 }
 
-extern "C" void loop()
+void magOutput(quan::time_<unsigned long>::ms const & now)
 {
-   auto const now = q_millis();
-
    if ( mag_read_state == idle){
-      if ( (now - prev_read) >= 100_ms_U ){
+      if ( (now - prev_read) >= mag_update_period ){
          prev_read = now;
-         bool result = HMC5883_start_measurement();
+         bool result = HMC5883startMeasurement();
          if (result){
             mag_read_state = waiting_for_ready;
          }else{
@@ -103,10 +121,9 @@ extern "C" void loop()
          }
       }
    }else{
-      if ( HMC5883_data_ready()){
+      if ( HMC5883dataReady()){
          quan::three_d::vect<quan::magnetic_flux_density::uT>  result;
-         if ( HMC5883_read(result,MagOutputCalibrated_uT) ){
-
+         if ( HMC5883read(result,MagOutputCalibrated_uT) ){
             print_P(PSTR("mag "));
             Serial.print(result.x.numeric_value());
             Serial.print(' ');
@@ -118,7 +135,45 @@ extern "C" void loop()
          mag_read_state = idle;
       }
    }
+}
 
+void mpuOutput(quan::time_<unsigned long>::ms const & now)
+{
+   if ( MPU6000dataReady()){
+
+      mpu6000data data;
+      MPU6000read(data);
+      if ( runmode::value & runmode::bitAccelOutput ){
+         print_P(PSTR("acc "));
+         Serial.print(data.accel.x.numeric_value());
+         Serial.print(' ');
+         Serial.print(data.accel.y.numeric_value());
+         Serial.print(' ');
+         Serial.print(data.accel.z.numeric_value());
+         Serial.println("");
+      }
+      if (runmode::value & runmode::bitGyroOutput ){
+         print_P(PSTR("gyr "));
+         Serial.print(data.gyro.x.numeric_value().numeric_value());
+         Serial.print(' ');
+         Serial.print(data.gyro.y.numeric_value().numeric_value());
+         Serial.print(' ');
+         Serial.print(data.gyro.z.numeric_value().numeric_value());
+         Serial.println("");
+      }
+   }
+}
+
+extern "C" void loop()
+{
+   auto const now = q_millis();
+
+   if ( runmode::value & runmode::bitMagOutput ) {
+      magOutput(now);
+   }
+   if ( runmode::value & (runmode::bitAccelOutput | runmode::bitGyroOutput) ){
+      mpuOutput(now);
+   }
    if( (now - prev_led) >= 500_ms_U ){
       prev_led = now;
       if ( pin_state == HIGH){
