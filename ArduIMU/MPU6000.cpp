@@ -1,7 +1,6 @@
 
-#include "MPU6000.h"
-
 #include <SPI.h>
+#include "MPU6000.h"
 
 namespace {
 
@@ -25,8 +24,9 @@ namespace {
       byte constexpr  valSampleRateDiv = (GyroscopeOutputRate / SampleRate) - 1U;
       static_assert(valSampleRateDiv == 99,"");
    
-   byte constexpr regMpuConfig = 0x1A;
-      byte constexpr valDlpfConfig20Hz = 4; // 20 Hz
+   byte constexpr regMpuConfig = 26U;
+      byte constexpr valDlpfConfig20Hz = 4U; // 20 Hz
+      byte constexpr valDlpfConfig5Hz = 6U; // 5 Hz
 
    byte constexpr regMpuGyroConfig = 27U;
       byte constexpr valGyroScale2000_deg_per_s = (0b11U << 3U); 
@@ -58,7 +58,7 @@ namespace {
    byte MPU6000_SPI_read(byte reg)
    {
      digitalWrite(pinMpuCS, LOW);
-     byte const dummy =  SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
+     (void) SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
      byte const return_value = SPI.transfer(0);
      digitalWrite(pinMpuCS, HIGH);
      return(return_value);
@@ -67,8 +67,8 @@ namespace {
    void MPU6000_SPI_write(byte reg, byte data)
    {
      digitalWrite(pinMpuCS, LOW);
-     byte const dummy = SPI.transfer(reg);
-     byte const dummy1 = SPI.transfer(data);
+     (void) SPI.transfer(reg);
+     (void) SPI.transfer(data);
      digitalWrite(pinMpuCS, HIGH);
    }
 
@@ -76,16 +76,17 @@ namespace {
 
    void MPU6000_data_int()
    {
-      ++newdata;
+      newdata = 1U;
    }
 }
 
-//doesnt seem to be used 
-// MPU6000 INTERRUPT ON INT0
+// return true if new data ready and clear flag
 bool MPU6000dataReady()
 {
+   cli();
    bool const result = newdata != 0U;
-   newdata = 0;
+   newdata = 0U;
+   sei();
    return result;
 }
 
@@ -96,6 +97,7 @@ void MPU6000init(void)
     pinMode(pinMpuCS, OUTPUT);
     digitalWrite(pinMpuCS, HIGH);
 
+    // allow peripheral to get to running state
     while (millis() < 500U){ asm volatile ("nop":::);}
     
     // SPI initialization
@@ -116,12 +118,11 @@ void MPU6000init(void)
     MPU6000_SPI_write(regMpuUserCtrl, bitI2cIfDis);
 
     delay(1);
-    // SAMPLE RATE
-    //MPU6000_SPI_write(regMpuSampleRateDiv,0x04);     // Sample rate = 200Hz    Fsample= 1Khz/(4+1) = 200Hz     
+    // SAMPLE RATE    
     MPU6000_SPI_write(regMpuSampleRateDiv,valSampleRateDiv);        
  
     delay(1);
-    // FS & DLPF   FS=2000º/s, DLPF = 20Hz (low pass filter)
+
     MPU6000_SPI_write(regMpuConfig, valDlpfConfig20Hz);  
 
     delay(1);
@@ -130,21 +131,18 @@ void MPU6000init(void)
 
     delay(1);
 
-    MPU6000_SPI_write(regMpuGyroConfig,valAccelScale4g);            // Accel scale 4g (4096LSB/g)
+    MPU6000_SPI_write(regMpuAccelConfig,valAccelScale4g);            // Accel scale 4g (4096LSB/g)
 
     delay(1);   
-    // INT CFG => Interrupt on Data Ready
+
     MPU6000_SPI_write(regMpuIntEnable,bitDataReadyIntEnable);         // INT: Raw data ready
 
     delay(1);
 
     MPU6000_SPI_write(regMpuIntPinConfig,bitClearIntOnRead);  
 
-    delay(2);
-    // Oscillator set
-    // MPU6000_SPI_write(regMpuPwrMgmt1,MPU_CLK_SEL_PLLGYROZ);
-   // delay(1);
-  
+ //   delay(2);
+
     // MPU_INT is connected to INT 0. Enable interrupt on INT0
     attachInterrupt(0,MPU6000_data_int,RISING);
 }
