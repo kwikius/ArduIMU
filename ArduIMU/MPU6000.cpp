@@ -165,7 +165,7 @@ namespace {
 
 }
 // Read gyros and accel sensors on MPU6000
-void MPU6000read(mpu6000data & result)
+void MPU6000read(MpuData & result)
 {
    quan::three_d::vect<int16_t> raw_data;
 

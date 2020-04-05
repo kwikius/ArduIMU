@@ -137,7 +137,7 @@ void mpuOutput(quan::time_<unsigned long>::ms const & now)
       
       uint8_t const runMode = runmode::get();
 
-      mpu6000data data;
+      MpuData data;
       MPU6000read(data);
       if ( runMode & runmode::bitAccelOutput ){
          print_P(PSTR("acc "));
