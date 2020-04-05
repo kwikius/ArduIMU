@@ -94,18 +94,12 @@ namespace{
 
 // mag runtime state
 
-   auto  mag_update_period = 100_ms_U;
+   auto mag_update_period = 100_ms_U;
    enum mag_read_state_t {
       idle,
       waiting_for_ready,
    }mag_read_state = idle;
 
-//// overall runtime state
-//   uint8_t constexpr output_mag_bit = (1U << 0U);
-//   uint8_t constexpr output_accel_bit = (1U << 1U);
-//   uint8_t constexpr output_gyro_bit = (1U << 2U);
-//
-//   uint8_t mode_bits = output_mpu_bit | output_mag_bit;
 }
 
 void magOutput(quan::time_<unsigned long>::ms const & now)
@@ -140,10 +134,12 @@ void magOutput(quan::time_<unsigned long>::ms const & now)
 void mpuOutput(quan::time_<unsigned long>::ms const & now)
 {
    if ( MPU6000dataReady()){
+      
+      uint8_t const runMode = runmode::get();
 
       mpu6000data data;
       MPU6000read(data);
-      if ( runmode::value & runmode::bitAccelOutput ){
+      if ( runMode & runmode::bitAccelOutput ){
          print_P(PSTR("acc "));
          Serial.print(data.accel.x.numeric_value());
          Serial.print(' ');
@@ -152,7 +148,7 @@ void mpuOutput(quan::time_<unsigned long>::ms const & now)
          Serial.print(data.accel.z.numeric_value());
          Serial.println("");
       }
-      if (runmode::value & runmode::bitGyroOutput ){
+      if (runMode & runmode::bitGyroOutput ){
          print_P(PSTR("gyr "));
          Serial.print(data.gyro.x.numeric_value().numeric_value());
          Serial.print(' ');
@@ -167,11 +163,12 @@ void mpuOutput(quan::time_<unsigned long>::ms const & now)
 extern "C" void loop()
 {
    auto const now = q_millis();
+   uint8_t const runMode = runmode::get();
 
-   if ( runmode::value & runmode::bitMagOutput ) {
+   if ( runMode & runmode::bitMagOutput ) {
       magOutput(now);
    }
-   if ( runmode::value & (runmode::bitAccelOutput | runmode::bitGyroOutput) ){
+   if ( runMode & (runmode::bitAccelOutput | runmode::bitGyroOutput) ){
       mpuOutput(now);
    }
    if( (now - prev_led) >= 500_ms_U ){

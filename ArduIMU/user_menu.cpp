@@ -93,10 +93,7 @@ namespace {
    {
       uint8_t runMode = 0U;
       print_P(PSTR("runmode ="));
-   //  Serial.println(runMode);
       readValueFromStorage(RUN_MODE,runMode);
-     // Serial.println(runMode);
-      
       if ( runMode == 0){
          println_P(PSTR(" no data output"));
       }else{
@@ -136,9 +133,7 @@ namespace {
             return unexpected_args();
          }
       }
-     // Serial.println(static_cast<int>(runMode));
       writeValueToStorage(RUN_MODE,runMode);
-     // Serial.println(runMode);
       Serial.println("");
       return 1;
    }

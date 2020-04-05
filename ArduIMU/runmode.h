@@ -10,10 +10,17 @@
 struct runmode{
 
    // overall runtime state
-   static constexpr  uint8_t bitMagOutput = (1U << 0U);
-   static constexpr uint8_t  bitAccelOutput = (1U << 1U);
-   static constexpr uint8_t  bitGyroOutput = (1U << 2U);
+   static constexpr uint8_t bitMagOutput = (1U << 0U);
+   static constexpr uint8_t bitAccelOutput = (1U << 1U);
+   static constexpr uint8_t bitGyroOutput = (1U << 2U);
 
+   static uint8_t get(){ return value;}
+
+   static void set(uint8_t valueIn) { value = valueIn;}
+
+   friend void runmodeInit();
+
+   private:
    static uint8_t value ;//= bitMagOutput | bitAccelOutput | bitGyroOutput;
 
 };
