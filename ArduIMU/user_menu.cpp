@@ -116,17 +116,17 @@ namespace {
       return 1;
    }
 
-   int8_t mag_cal(quan::duino::Menu const & menu, uint8_t argc, char** argv)
+   int8_t mag_calb(quan::duino::Menu const & menu, uint8_t argc, char** argv)
    {
       return sensor_cal(PSTR("mag"),MAG_CALIBRATED, argc,argv);
    }
 
-   int8_t acc_cal(quan::duino::Menu const & menu, uint8_t argc, char** argv)
+   int8_t acc_calb(quan::duino::Menu const & menu, uint8_t argc, char** argv)
    {
       return sensor_cal(PSTR("accel"),ACC_CALIBRATED, argc, argv);
    }
 
-   int8_t gyr_cal(quan::duino::Menu const & menu, uint8_t argc, char** argv)
+   int8_t gyr_calb(quan::duino::Menu const & menu, uint8_t argc, char** argv)
    {
       return sensor_cal(PSTR("gyro"),GYR_CALIBRATED, argc, argv);
    }
@@ -147,7 +147,7 @@ namespace {
    int8_t show_run_mode()
    {
       uint8_t runMode = 0U;
-      print_P(PSTR("runmode ="));
+      print_P(PSTR("run_mode ="));
       readValueFromStorage(RUN_MODE,runMode);
       if ( runMode == 0){
          println_P(PSTR(" no data output"));
@@ -169,7 +169,7 @@ namespace {
 
    int8_t set_run_mode(uint8_t argc, char** argv)
    {
-      print_P(PSTR("set runmode ="));
+      print_P(PSTR("set run_mode ="));
       uint8_t runMode = 0U;
       for ( uint8_t i = 1; i < argc ; ++i){
          if (strcmp_P(argv[i],PSTR("mag")) == 0){
@@ -202,7 +202,7 @@ mag_gain(quan::duino::Menu const & menu,uint8_t argc, char** argv)
 }
 
 int8_t
-mag_offset(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
+mag_ofst(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
 {
    return sensor_storage(MAG_OFST,argc,argv);
 }
@@ -214,7 +214,7 @@ acc_gain(quan::duino::Menu const & menu,uint8_t argc, char** argv)
 }
 
 int8_t
-acc_offset(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
+acc_ofst(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
 {
    return sensor_storage(ACC_OFST,argc,argv);
 }
@@ -226,7 +226,7 @@ gyr_gain(quan::duino::Menu const & menu,uint8_t argc, char** argv)
 }
 
 int8_t
-gyr_offset(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
+gyr_ofst(quan::duino::Menu const & menu, uint8_t argc, char ** argv)
 {
    return sensor_storage(GYR_OFST,argc,argv);
 }
@@ -275,16 +275,16 @@ void user_menu()
        quan::duino::MenuItem{PSTR("help"),PSTR("help on commands"),menuHelp},
 
        quan::duino::MenuItem{PSTR("mag_gain"),PSTR("get/set mag gain"), mag_gain},
-       quan::duino::MenuItem{PSTR("mag_ofst"),PSTR("get/set mag offset"), mag_offset},
-       quan::duino::MenuItem{PSTR("mag_calb"),PSTR("get set mag calibrated true/false"), mag_cal},
+       quan::duino::MenuItem{PSTR("mag_ofst"),PSTR("get/set mag offset"), mag_ofst},
+       quan::duino::MenuItem{PSTR("mag_calb"),PSTR("get/set mag calibrated true/false"), mag_calb},
 
-       quan::duino::MenuItem{PSTR("accel_gain"),PSTR("get/set accel gain"), acc_gain},
-       quan::duino::MenuItem{PSTR("accel_ofst"),PSTR("get/set accel offset"), acc_offset},
-       quan::duino::MenuItem{PSTR("accel_calb"),PSTR("get set accel calibrated true/false"), acc_cal},
+       quan::duino::MenuItem{PSTR("acc_gain"),PSTR("get/set accel gain"), acc_gain},
+       quan::duino::MenuItem{PSTR("acc_ofst"),PSTR("get/set accel offset"), acc_ofst},
+       quan::duino::MenuItem{PSTR("acc_calb"),PSTR("get/set accel calibrated true/false"), acc_calb},
 
-       quan::duino::MenuItem{PSTR("gyro_gain"),PSTR("get/set gyro gain"), gyr_gain},
-       quan::duino::MenuItem{PSTR("gyro_ofst"),PSTR("get/set gyro offset"), gyr_offset},
-       quan::duino::MenuItem{PSTR("gyro_calb"),PSTR("get set gyro calibrated true/false"), gyr_cal},
+       quan::duino::MenuItem{PSTR("gyr_gain"),PSTR("get/set gyro gain"), gyr_gain},
+       quan::duino::MenuItem{PSTR("gyr_ofst"),PSTR("get/set gyro offset"), gyr_ofst},
+       quan::duino::MenuItem{PSTR("gyr_calb"),PSTR("get/set gyro calibrated true/false"), gyr_calb},
 
        quan::duino::MenuItem{PSTR("run_mode"),PSTR("get/set run_mode [mag] [acc] [gyr]"), run_mode},
 
