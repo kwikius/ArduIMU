@@ -8,6 +8,11 @@
 
 // TODO: change gyro to radians per sec?
 // TODO: reference frame convention. What is positive acceleration and positive rotation
+// https://en.wikipedia.org/wiki/Axes_conventions
+// ENU or NED
+
+// ENU +x points east, +y points north and +z points up
+// Rotations follow right hand rule with thumb pointing in positive direction along axis
 struct MpuData{
 
    typedef quan::angle_<float>::deg deg;

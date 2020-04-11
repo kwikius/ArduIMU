@@ -224,8 +224,6 @@ modulo_angle( GLfloat const & in)
    GLfloat incr = 10;
 }
 
-
-
 void onKeyboard(unsigned char key,int x, int y)
 {
    bool update = true;

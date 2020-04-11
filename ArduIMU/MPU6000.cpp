@@ -1,8 +1,22 @@
 
 #include <SPI.h>
 #include "MPU6000.h"
+#include "storage.h"
 
 namespace {
+
+   QUAN_QUANTITY_LITERAL(angle,deg);
+   QUAN_QUANTITY_LITERAL(acceleration,m_per_s2);
+
+   constexpr inline 
+   quan::reciprocal_time_<
+      quan::angle_<float>::deg 
+   >::per_s operator "" _deg_per_s ( long double v)
+   {
+      return quan::reciprocal_time_<
+        quan::angle_<float>::deg 
+      >::per_s {quan::angle_<float>::deg{v}};
+   }
 
    // MPU6000 chip select 
    byte constexpr pinMpuCS = 4;
@@ -43,26 +57,26 @@ namespace {
    quan::reciprocal_time_<
       quan::angle_<float>::deg 
    >::per_s constexpr 
-   gyro_resolution{quan::angle_<float>::deg{2000.f/32767} };
+   gyro_resolution{quan::angle_<float>::deg{2000.f/32768} };
 
    byte constexpr regGyroData = 67U;
 
    quan::acceleration_<
       float
-   >::m_per_s2 constexpr
-   accel_resolution{4.f/32767};
+   >::m_per_s2 constexpr // N.B for some reason 2 * what it should be according to ref man?
+   accel_resolution = (8.f * quan::acceleration::g)/ 32768;
  
    byte constexpr regAccelData = 59U;
 
    // MPU6000 SPI functions
-   byte MPU6000_SPI_read(byte reg)
-   {
-     digitalWrite(pinMpuCS, LOW);
-     (void) SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
-     byte const return_value = SPI.transfer(0);
-     digitalWrite(pinMpuCS, HIGH);
-     return(return_value);
-   }
+//   byte MPU6000_SPI_read(byte reg)
+//   {
+//     digitalWrite(pinMpuCS, LOW);
+//     (void) SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
+//     byte const return_value = SPI.transfer(0);
+//     digitalWrite(pinMpuCS, HIGH);
+//     return(return_value);
+//   }
 
    void MPU6000_SPI_write(byte reg, byte data)
    {
@@ -78,6 +92,21 @@ namespace {
    {
       newdata = 1U;
    }
+
+   quan::three_d::vect<quan::acceleration_<float>::m_per_s2> 
+   accel_offset
+   { 0.0_m_per_s2,0.0_m_per_s2,0.0_m_per_s2};
+
+   quan::three_d::vect<float> accel_gain{1.f,1.f,1.f};
+
+   quan::three_d::vect<
+      quan::reciprocal_time_<
+         quan::angle_<float>::deg 
+      >::per_s
+   > gyro_offset
+   { 0.0_deg_per_s,0.0_deg_per_s,0.0_deg_per_s};
+
+   quan::three_d::vect<float> gyro_gain{1.f,1.f,1.f};
 }
 
 // return true if new data ready and clear flag
@@ -93,74 +122,95 @@ bool MPU6000dataReady()
 // MPU6000 Initialization and configuration
 void MPU6000init(void)
 {
-    // MPU6000 chip select setup
-    pinMode(pinMpuCS, OUTPUT);
-    digitalWrite(pinMpuCS, HIGH);
+   // MPU6000 chip select setup
+   pinMode(pinMpuCS, OUTPUT);
+   digitalWrite(pinMpuCS, HIGH);
 
-    // allow peripheral to get to running state
-    while (millis() < 500U){ asm volatile ("nop":::);}
-    
-    // SPI initialization
-    SPI.begin();
-    SPI.setClockDivider(SPI_CLOCK_DIV16);      // SPI at 1Mhz (on 16Mhz clock)
-
-    delay(10);
-    
-    // Chip reset
-    MPU6000_SPI_write(regMpuPwrMgmt1, bitMpuDeviceReset);
-
-    delay(100);
-    // Wake up device and select GyroZ clock (better performance)
-    MPU6000_SPI_write(regMpuPwrMgmt1, valMpuClkSelPLLGyroZ);
-
-    delay(1);
-    // Disable I2C bus (recommended on datasheet)
-    MPU6000_SPI_write(regMpuUserCtrl, bitI2cIfDis);
-
-    delay(1);
-    // SAMPLE RATE    
-    MPU6000_SPI_write(regMpuSampleRateDiv,valSampleRateDiv);        
+   bool accel_calibrated = false;
+   readValueFromStorage(ACC_CALIBRATED,accel_calibrated);
+   if ( accel_calibrated){
+      // technically a float in eeprom but should be OK
+      readValueFromStorage(ACC_OFST,accel_offset);
+      readValueFromStorage(ACC_GAIN,accel_gain);
+   }
  
-    delay(1);
+   bool gyro_calibrated = false;
+   readValueFromStorage(GYR_CALIBRATED,gyro_calibrated);
+   if ( gyro_calibrated){
+      // a float in eeprom
+      quan::three_d::vect<float> temp;
+      readValueFromStorage(GYR_OFST,temp);
+      // scale it by the deg_per_s unit
+      gyro_offset = temp * 1.0_deg_per_s;
+      readValueFromStorage(GYR_GAIN,gyro_gain);
+   }
 
-    MPU6000_SPI_write(regMpuConfig, valDlpfConfig20Hz);  
+   // SPI initialization
+   SPI.begin();
+   SPI.setClockDivider(SPI_CLOCK_DIV16);      // SPI at 1Mhz (on 16Mhz clock)
 
-    delay(1);
+   delay(10);
 
-    MPU6000_SPI_write(regMpuGyroConfig,valGyroScale2000_deg_per_s);  // Gyro scale 2000º/s
+   // allow peripheral to get to running state from power up
+   while (millis() < 500U){ asm volatile ("nop":::);}
 
-    delay(1);
+   // Chip reset
+   MPU6000_SPI_write(regMpuPwrMgmt1, bitMpuDeviceReset);
 
-    MPU6000_SPI_write(regMpuAccelConfig,valAccelScale4g);            // Accel scale 4g (4096LSB/g)
+   delay(100);
+   // Wake up device and select GyroZ clock (better performance)
+   MPU6000_SPI_write(regMpuPwrMgmt1, valMpuClkSelPLLGyroZ);
 
-    delay(1);   
+   delay(1);
+   // Disable I2C bus (recommended on datasheet)
+   MPU6000_SPI_write(regMpuUserCtrl, bitI2cIfDis);
 
-    MPU6000_SPI_write(regMpuIntEnable,bitDataReadyIntEnable);         // INT: Raw data ready
+   delay(1);
+   // SAMPLE RATE    
+   MPU6000_SPI_write(regMpuSampleRateDiv,valSampleRateDiv);        
 
-    delay(1);
+   delay(1);
 
-    MPU6000_SPI_write(regMpuIntPinConfig,bitClearIntOnRead);  
+   MPU6000_SPI_write(regMpuConfig, valDlpfConfig20Hz);  
 
- //   delay(2);
+   delay(1);
 
-    // MPU_INT is connected to INT 0. Enable interrupt on INT0
-    attachInterrupt(0,MPU6000_data_int,RISING);
+   MPU6000_SPI_write(regMpuGyroConfig,valGyroScale2000_deg_per_s);  // Gyro scale 2000º/s
+
+   delay(1);
+
+   MPU6000_SPI_write(regMpuAccelConfig,valAccelScale4g);            // Accel scale 4g (4096LSB/g)
+
+   delay(1);
+
+   MPU6000_SPI_write(regMpuIntPinConfig,bitClearIntOnRead); 
+
+   delay(1);  
+
+   // MPU_INT is connected to INT 0. Enable interrupt on INT0
+   attachInterrupt(0,MPU6000_data_int,RISING);
+ 
+   MPU6000_SPI_write(regMpuIntEnable,bitDataReadyIntEnable);         // INT: Raw data ready
+
+   SPI.setClockDivider(SPI_CLOCK_DIV2);      // SPI at 8Mhz (on 16Mhz clock)
 }
 
 namespace {
 
    void read_data(byte reg, int16_t & result)
    {
-       int16_t byte_H = MPU6000_SPI_read(reg);
-       int16_t byte_L = MPU6000_SPI_read(reg + 1U );
-       result = (byte_H << 8U) | byte_L;
+     result = static_cast<int16_t>(SPI.transfer(0) << 8) | 
+                 static_cast<int16_t>(SPI.transfer(0));
    }
 
    void read_data(byte reg, quan::three_d::vect<int16_t> & result)
    {
-      read_data(reg,result.x);
-      read_data(reg+2U,result.y);
-      read_data(reg+4U,result.z);
+      digitalWrite(pinMpuCS, LOW);
+         (void) SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
+         read_data(reg,result.x);
+         read_data(reg+2U,result.y);
+         read_data(reg+4U,result.z);
+      digitalWrite(pinMpuCS, HIGH);
    }
 
 }
@@ -168,10 +218,18 @@ namespace {
 void MPU6000read(MpuData & result)
 {
    quan::three_d::vect<int16_t> raw_data;
-
-   read_data(regAccelData,raw_data);
-   result.accel = raw_data * accel_resolution;
-
-   read_data(regGyroData,raw_data);
-   result.gyro = raw_data * gyro_resolution;
+   {
+      read_data(regAccelData,raw_data);
+      auto const accel = raw_data * accel_resolution + accel_offset;
+      result.accel.x = accel.x * accel_gain.x;
+      result.accel.y = accel.y * accel_gain.y;
+      result.accel.z = accel.z * accel_gain.z;
+   }
+   {
+      read_data(regGyroData,raw_data);
+      auto const gyro = raw_data * gyro_resolution + gyro_offset;
+      result.gyro.x = gyro.x * gyro_gain.x;
+      result.gyro.y = gyro.y * gyro_gain.y;
+      result.gyro.z = gyro.z * gyro_gain.z;
+   }
 }

@@ -59,6 +59,7 @@ bool create_sim_mag_data(
 /*
   not the best. Relies on having points near min and max Really want to fit a 3d ellipse.
   For accuracy look at pointset in gnuplot to check coverage.
+  Maybe look at https://www.mathworks.com/matlabcentral/fileexchange/24693-ellipsoid-fit
 */
 quan::three_d::vect<double> calculate_extents(std::vector<quan::three_d::vect<double> > const & point_cloud)
 {

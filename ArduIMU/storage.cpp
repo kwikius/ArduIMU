@@ -5,32 +5,36 @@
 #include "storage.h"
 #include "runmode.h"
 
-
-
 /* ArduIMU storage */
 
  // id for each object in storage
 namespace {
 
    enum storageType  {
-         Vect3F,
-         Bool,
-         Uint8
+      Vect3F,
+      Bool,
+      Uint8
    };
  
    // idx by casting storageType to uint16_t
    constexpr uint16_t storageSizeFromType[] = {
-        sizeof(quan::three_d::vect<float>), // [ Vect3F ]
-        sizeof(bool)   ,                     // [ Bool ]
-        sizeof(uint8_t)                     // [ Uint8]
+      sizeof(quan::three_d::vect<float>), // [ Vect3F ]
+      sizeof(bool)   ,                     // [ Bool ]
+      sizeof(uint8_t)                     // [ Uint8]
    };
 
    //The types indexed by underlying idx storageID
    constexpr storageType storageTypes[] = {
-         Vect3F, //  [ MAG_OFST ] 
-         Vect3F,  // [ MAG_GAIN ]
-         Bool,     // [ MAG_CALIBRATED ]
-         Uint8     // [ RUNMODE ]
+      Vect3F,  // [ MAG_OFST ] 
+      Vect3F,  // [ MAG_GAIN ]
+      Bool,    // [ MAG_CALIBRATED ]
+      Uint8 ,  // [ RUNMODE ]
+      Vect3F,  // [ ACC_OFST ]
+      Vect3F,  // [ ACC_GAIN ]
+      Bool,    // [ ACC_CALIBRATED ]
+      Vect3F,  // [ GYR_OFST ]
+      Vect3F,  // [ GYR_GAIN ]
+      Bool     // [ GYR_CALIBRATED ]
    };
 
    // gives a bit of space at start of eeprom for 
