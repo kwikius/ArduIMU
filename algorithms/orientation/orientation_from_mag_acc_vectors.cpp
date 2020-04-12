@@ -38,7 +38,7 @@ namespace {
 }
 
 /**
-* Rotate a 3d vector by zyx euler angles
+* functor to rotate a 3d vector by zyx euler angles. Construct with angles or vector of angles
 */
 template <typename AngleType>
 struct euler_zyx_rotation{
@@ -82,11 +82,13 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
 {
    // return good by default!
    bool success = true;
+
    // vector of angles representing the attitude of the object frame 
    // relative the earth local tangent Frame (ELTF)
    // as zyx euler angles
    auto const euler_vect = quan::three_d::make_vect(x,y,z);
 
+   // construct the rotation functor
    euler_zyx_rotation<quan::angle::deg> object_attitude{euler_vect};
 
    // random point. Check this doesnt happen to just work for gravity and mag!
@@ -100,6 +102,7 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
    // In reality this would come from the accelerometer reading
    auto const acc_sensor = object_attitude(earth_gravity);
 
+   // also rotate the control point
    auto const control_point_rot = object_attitude(control_point);
 
    // Calculate the angle between the accelerometer and the earth gravity vector
@@ -125,7 +128,7 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
 
    quan::angle::deg const angle = (v2_angle - v1_angle);
 
-   // calculate the quat that rotates 30 degree around z axis
+   // calculate the quat that rotates 'angle' around z axis
    auto const qmag = quatFrom(quan::three_d::vect<double>{0,0,1},angle);
 
    // combine the two rotation quaternions (in correct order) to give one rotation
@@ -134,7 +137,6 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
 
    // check
    auto const earth_mag_field_calculated = qrot * mag_sensor;
-
    // If the calculation is correct the calculated field should
    // be the same as the earth magnetic field in the NED_ELTF
    success = ( magnitude( earth_mag_field_calculated - earth_magnetic_field) < 1.e-6_uT);
@@ -143,7 +145,6 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
 
    //check
    auto const gravity_calculated = qrot * acc_sensor;
-
    // Check the acc sensor too
    // The rotation should map the acc _sensor to earth gravity field
    // Note that qmag has no effect on the accel vector
@@ -165,7 +166,6 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
 
 int main()
 {
-
    bool success = true;
  
    // define the euler angle increment in each direction for each test
@@ -191,8 +191,6 @@ int main()
    std::cout << "tim taken = " << timer() << '\n';
    std::cout << "num iters = " << n_iters << '\n';
    std::cout << "time per iter = " << timer() / n_iters <<'\n';
-
-
 
    QUAN_EPILOGUE
 
