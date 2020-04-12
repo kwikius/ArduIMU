@@ -89,7 +89,7 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
    auto const euler_vect = quan::three_d::make_vect(x,y,z);
 
    // construct the rotation functor
-   euler_zyx_rotation<quan::angle::deg> object_attitude{euler_vect};
+   euler_zyx_rotation<quan::angle::deg> const object_attitude{euler_vect};
 
    // random point. Check this doesnt happen to just work for gravity and mag!
    quan::three_d::vect<double> const control_point{-20,300,-1100};
@@ -188,9 +188,9 @@ int main()
       }
    }
    timer.stop();
-   std::cout << "tim taken = " << timer() << '\n';
-   std::cout << "num iters = " << n_iters << '\n';
-   std::cout << "time per iter = " << timer() / n_iters <<'\n';
+   std::cout << "time taken      = " << timer() << '\n';
+   std::cout << "number of iters = " << n_iters << '\n';
+   std::cout << "time per iter   = " << timer() / n_iters <<'\n';
 
    QUAN_EPILOGUE
 
