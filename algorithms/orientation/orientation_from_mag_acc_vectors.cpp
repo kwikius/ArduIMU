@@ -189,16 +189,16 @@ void toZYXeulerAngles(quan::three_d::quat<T> const & q, quan::three_d::vect<Angl
 }
 
 /**
-* Check 2 ZYZ euler sequences are equivalent
+* Check 2 ZYX euler sequences are equivalent
 *
 * Equivalent euler sequence will produce the same rotations though the combination of angles is not the same.
 * Use a selection of 3d vectors ,
-* Rotate them using both algorithms
+* Rotate them using both sets of ZYX euler angles
 * and see if the results match.
 *
 * \param[in] lhs vector representing x, y, z angles of ZYX euler sequence
 * \param[in] rhs vector representing x, y, z angles of ZYX euler sequence
-* \return   true if they match elese false
+* \return   true if they match else false
 */
 bool check_equivalent_zyx_euler_sequence(
       quan::three_d::vect<quan::angle::deg> const & lhs, 
@@ -238,7 +238,7 @@ bool check_equivalent_zyx_euler_sequence(
 /**
 *  test out the attitudes in x y z , to check the orientation alg works.
 *
-* Note that conversion from quat to euler causes gimabl lock at some points, therefore these points
+* Note that conversion from quat to euler causes gimbal lock at some points, therefore these points
 * are skipped in the test. Change avoid_gimbal_lock_points to false to see gimbal lock points.
 * However euler angles are only used to help the user and dont take part in the algorithm itself.
 */
