@@ -187,7 +187,7 @@ namespace {
    double constexpr magnitude_epsilon = 0.001;
 
    int constexpr x_sign = 1;
-   int constexpr y_sign = -1;
+   int constexpr y_sign = 1;
    int constexpr z_sign = -1;
 
 } // namespace
@@ -197,7 +197,7 @@ void onIdle()
   // read input mag vector to local if new data available
   quan::three_d::vect<double> ll_mag_vector;
   
-  if ( parse_sp(*serial_port, ll_mag_vector) != 0 ){
+  if ( parse_sp(*serial_port, ll_mag_vector) == 1 ){
       quan::three_d::vect<double> const temp
       { ll_mag_vector.x * x_sign,
         ll_mag_vector.y * y_sign,
