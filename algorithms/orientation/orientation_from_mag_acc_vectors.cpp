@@ -14,6 +14,8 @@
 #include <quan/out/magnetic_flux_density.hpp>
 #include <quan/out/acceleration.hpp>
 #include <quan/out/angle.hpp>
+#include <fstream>
+#include <iomanip>
 
 namespace {
 
@@ -73,12 +75,13 @@ struct euler_zyx_rotation{
 * used to rotate the gravity and compass vectors to find the simulated sensor inputs
 * Then the proposed algorithm computes the the original vectors from them.
 *
-* \param x angle to rotate around x axis in degrees.
-* \param y angle to rotate around y axis in degrees.
-* \param z angle to rotate around z axis in degrees.
-* \return True if the original vectors were recomputed within bounds else false
+* \param[in]  x        angle to rotate around x axis in degrees.
+* \param[in]  y        angle to rotate around y axis in degrees.
+* \param[in]  z        angle to rotate around z axis in degrees.
+* \param[out] quat_out quaternion representing the resulting attitude.
+* \return true if the original vectors were recomputed within bounds, thenquat_out contains the quaternion represnting rotation, else false.
 */
-bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::angle::deg const & z)
+bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::angle::deg const & z, quan::three_d::quat<double> & quat_out)
 {
    // return good by default!
    bool success = true;
@@ -161,39 +164,167 @@ bool find_attitude(quan::angle::deg const & x, quan::angle::deg const & y,quan::
    success = magnitude(control_point - control_point_un_rot) < 1.e-6;
    QUAN_CHECK(success)
 
+   if ( success){
+      quat_out = qrot;
+   }
    return success;
 }
+
+/** Convert a quaternion to ZYX euler angles
+*
+* N.B  ZYX euler angles fail where the y rotation is 90, or 270 degrees and is less accurate where the y rotation is close to that.
+* Not much you can do about that except use a different sequence for that rotation
+* Could use a fallback to a different rotation seguence wyen y output of 90 or 270 deg is detected?
+* So have a list of preferred euler rotation sequences and finally if all fail ( must be a small set of rotations? combo of 90 270)
+*
+* \param[in] q the quaternion to convert to euler angles
+* \param[out] the vector of angles to put the results into
+* \return nothing
+*/
+template <typename T, typename Angle>
+void toZYXeulerAngles(quan::three_d::quat<T> const & q, quan::three_d::vect<Angle> & angles) {
+   angles.x = -quan::angle::rad{atan2( 2 * ( q.w * q.x + q.y * q.z), q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z)};
+   angles.y = quan::angle::rad{asin( 2 * (q.w * q.y - q.z * q.x))};
+   angles.z = -quan::angle::rad{atan2( 2 * (q.w * q.z + q.x * q.y), q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z)};
+}
+
+/**
+* Check 2 ZYZ euler sequences are equivalent
+*
+* Equivalent euler sequence will produce the same rotations though the combination of angles is not the same.
+* Use a selection of 3d vectors ,
+* Rotate them using both algorithms
+* and see if the results match.
+*
+* \param[in] lhs vector representing x, y, z angles of ZYX euler sequence
+* \param[in] rhs vector representing x, y, z angles of ZYX euler sequence
+* \return   true if they match elese false
+*/
+bool check_equivalent_zyx_euler_sequence(
+      quan::three_d::vect<quan::angle::deg> const & lhs, 
+      quan::three_d::vect<quan::angle::deg> const & rhs,
+        std::ostream & out)
+{
+   quan::three_d::vect<double> constexpr  pts[] =
+   {
+      {1,0,0},
+      {0,1,0},
+      {0,0,1},
+      {1,1,1},
+      {-1,1,1},
+      {1,-1,1}
+   };
+   euler_zyx_rotation<quan::angle::deg> const elhs{lhs};
+   euler_zyx_rotation<quan::angle::deg> const erhs{rhs};
+   
+   int constexpr num_pts = sizeof(pts) / sizeof(pts[0]);
+
+   for ( int32_t i = 0; i < num_pts; ++i){
+
+      auto const lhsr = elhs(pts[i]);
+      auto const rhsr = erhs(pts[i]);
+      if ( magnitude ( lhsr - rhsr) > 1.e-3 ){
+         out << "failed --------------------\n";
+         out << "lhs = " << lhs <<'\n';
+         out << "rhs = " << rhs <<'\n';
+         out << lhsr << " != " << rhsr << "\n";
+         
+         return false;
+      }
+   }
+   return true;
+}
+
+/**
+*  test out the attitudes in x y z , to check the orientation alg works.
+*
+* Note that conversion from quat to euler causes gimabl lock at some points, therefore these points
+* are skipped in the test. Change avoid_gimbal_lock_points to false to see gimbal lock points.
+* However euler angles are only used to help the user and dont take part in the algorithm itself.
+*/
 
 int main()
 {
    bool success = true;
  
-   // define the euler angle increment in each direction for each test
-   auto constexpr xstep = 7.890_deg;
-   auto constexpr ystep = 11.3_deg;
-   auto constexpr zstep = 7.213_deg;
+   // euler angle increment in each direction for each test
+   auto constexpr xstep = 10.0_deg;
+   auto constexpr ystep = 10.0_deg;
+   auto constexpr zstep = 10.0_deg;
 
-   uint64_t n_iters = 0;
+   std::ofstream out("output.txt");
+   out.setf(std::ios::fixed);
+   out.precision(2);
+
+   uint64_t n_iters = 0U;    // total orientations
+   uint64_t n_different = 0; // number where the quat to euler produce different angles than input
+   uint64_t n_fails = 0U;    // number where quaToEuter angles dont produce same rot as inputs
    quan::timer<> timer;
+   bool avoid_gimbal_lock_points = true;
+   // loop through a good coverage of angle combinations
+   // TODO check coverage visually using point cloud
    for ( auto x = 0.0_deg; x <= 360.0_deg; x += xstep){
       if (! success) { break;}
       for ( auto y = 0.0_deg; y <= 360.0_deg; y += ystep){
+         
          if (! success) { break;}
-         for ( auto z = 0.0_deg; z <= 360.0_deg; z += zstep){
-           std::cout << x << ", " << y  << ", " << z << '\n';
-           success = find_attitude(x,y,z);
-           ++n_iters;
-           if ( ! success) {break;}
+         // here we see if only those at y == 90, y == 270 fail
+         if ( ! ( avoid_gimbal_lock_points && ((y == 90.0_deg ) || ( y ==270.0_deg)) ) ){
+            for ( auto z = 0.0_deg; z <= 360.0_deg; z += zstep){
+
+               auto const x1 = unsigned_modulo(x);
+               auto const y1 = unsigned_modulo(y);
+               auto const z1 = unsigned_modulo(z);
+
+               //  out << x1 << ", " << y1  << ", " << z1 << '\n';
+               quan::three_d::quat<double> quat_result;
+               success = find_attitude(x,y,z,quat_result);
+               ++n_iters;
+               if ( ! success) {break;}
+
+               quan::three_d::vect<quan::angle::deg> original_angles;
+               toZYXeulerAngles(quat_result,original_angles);
+
+               original_angles.x = unsigned_modulo(original_angles.x,1.e-3_deg);
+               original_angles.y = unsigned_modulo(original_angles.y,1.e-3_deg);
+               original_angles.z = unsigned_modulo(original_angles.z,1.e-3_deg);           
+
+               //  out << original_angles;
+
+               bool same = true;
+               if ( (abs(x1 -original_angles.x) > 1.e-2_deg)){
+                  //out << "[x]";
+                  same = false;
+               }
+               if ( (abs(y1 -original_angles.y) > 1.e-2_deg)){
+                  // out << "[y]";
+                  same = false;
+               }
+               if ( (abs(z1 -original_angles.z) > 1.e-2_deg)){
+                  //out << "[z]";
+                  same = false;
+                  }
+               // out <<'\n';
+               if ( ! same){
+                  quan::three_d::vect<quan::angle::deg> input_vect{x,y,z} ;
+                  ++n_different;
+                  if ( !check_equivalent_zyx_euler_sequence(input_vect,original_angles,out)){
+                     ++n_fails;
+                  }
+               }
+            }
          }
       }
    }
    timer.stop();
    std::cout << "time taken      = " << timer() << '\n';
    std::cout << "number of iters = " << n_iters << '\n';
+   std::cout << "number not same = " << n_different <<'\n';
+   std::cout << "number of fails = " << n_fails << '\n';
+   std::cout << "ratio fails/tests = " << static_cast<double>(n_fails)/ n_iters <<'\n';
    std::cout << "time per iter   = " << timer() / n_iters <<'\n';
 
    QUAN_EPILOGUE
-
 }
 
 int errors = 0;
