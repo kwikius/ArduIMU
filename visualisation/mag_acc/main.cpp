@@ -28,9 +28,9 @@ void reshape(GLint w, GLint h) {
   glLoadIdentity();
 
   if (w <= h) {
-    glOrtho(-1,1, -1/aspect, 1/aspect, -1.0, 1.0);
-  } else {
-    glOrtho(-aspect, aspect, -1.0, 1.0, -1.0, 1.0);
+     glOrtho(-1,1, -1/aspect, 1/aspect, -1.0, 1.0);
+  }else{
+     glOrtho(-aspect, aspect, -1.0, 1.0, -1.0, 1.0);
   }
 }
 
@@ -51,15 +51,10 @@ namespace {
       }
       return out;
    }
-/*
-  // axis and angle to rotate compass needle from pointing out along x axis
-  quan::three_d::vect<double> rotation_axis {1,0,0};
-  quan::angle::deg rotation_angle{10};
- */
-  quan::three_d::vect<GLfloat> display_rotation{0,0,0};
+
+   quan::three_d::vect<GLfloat> display_rotation{0,0,0};
 
    // drawing
-
    typedef quan::three_d::vect<GLfloat> quan_vectf;
 
    void quanGLVertex(quan_vectf const & v)
@@ -72,8 +67,8 @@ namespace {
         glColor3f(v.x,v.y,v.z);
    }
 
-   quan_vectf needle_point{ 0.3f,0.f,0.f};
-   GLfloat constexpr base_x = -0.1f;
+   quan_vectf needle_point{ 0.3f,0.f,0.f}; // along x
+   GLfloat constexpr base_x = -0.1f;       // base in yz plane
    GLfloat constexpr base_size_y = 0.05f;
    GLfloat constexpr base_size_z = 0.05f;
    quan_vectf needle_arrow_base[] = {
@@ -115,20 +110,48 @@ namespace {
       glEnd();
    }
 
+   /**
+      Updated with the rotation matrix to rotate the object.
+   */
    quan::basic_matrix<4,4,float> mR = { 
       1.0, 0.0, 0.0, 0.0,
       0.0, 1.0, 0.0, 0.0,
       0.0, 0.0, 1.0, 0.0,
       0.0, 0.0, 0.0, 1.0
    };
-
 }
 
 /**
-   \pre rot_quat is a unit quaternion
+*  Set Mr matrix above to quaternion rotation.
+*  \param[in] q quaternion to convert to openGL matrix.
+*  \pre rot_quat is a unit quaternion
 */
 void setRotationFrom(quan::three_d::quat<double> const & q)
 {
+#if 1 
+// dependent or which way matrix is represented
+  // Works in OpenGL
+   mR.at(0,0) = q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z;
+      mR.at(1,0) = 2.f * (q.x * q.y - q.w * q.z);
+         mR.at(2,0) = 2.f * ( q.x * q.z + q.w * q.y);
+            mR.at(3,0) = 0.f;
+
+   mR.at(0,1) = 2.f * (q.x * q.y + q.w * q.z);
+      mR.at(1,1) = q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z;
+         mR.at(2,1) = 2.f * ( q.y * q.z  - q.w * q.x);
+            mR.at(3,1) = 0.f;
+
+   mR.at(0,2) = 2 * ( q.x * q.z - q.w * q.y);
+      mR.at(1,2) = 2 * ( q.y * q.z + q.w * q.x);
+         mR.at(2,2) = q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z;
+            mR.at(3,1) = 0.f;
+
+   mR.at(0,3) = 0.f;
+      mR.at(1,3) = 0.f;
+         mR.at(2,3) = 0.f;
+            mR.at(3,3) = 1.f;
+#else
+   // Wrong transpose for OpenGL but may be usefult for other systems
    mR.at(0,0) = q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z;
       mR.at(0,1) = 2.f * (q.x * q.y - q.w * q.z);
          mR.at(0,2) = 2.f * ( q.x * q.z + q.w * q.y);
@@ -148,6 +171,7 @@ void setRotationFrom(quan::three_d::quat<double> const & q)
       mR.at(3,1) = 0.f;
          mR.at(3,2) = 0.f;
             mR.at(3,3) = 1.f;
+#endif
 }
 
 void display() {
@@ -180,13 +204,6 @@ void display() {
 
    glEnd();
 
-//   glRotatef(
-//      rotation_angle.numeric_value(),
-//      rotation_axis.x,
-//      rotation_axis.y,
-//      rotation_axis.z
-//   );
-
    glMultMatrixf(mR.get_array());
 
    draw_compass();
@@ -198,35 +215,6 @@ void display() {
 namespace {
    // for read mag data from port
    quan::serial_port * serial_port = nullptr;
-/*
-   template <typename T>
-   inline 
-   quan::angle::rad get_rotation_angle( 
-      quan::three_d::vect<T> const & vecta, 
-      quan::three_d::vect<T> const & vectb
-   )
-   {
-      return std::acos(dot_product(unit_vector(vecta),unit_vector(vectb)));
-   }*/
-/*
-   before entry
-     // magnitude(a) > eps && magnitude(b) > eps &&
-    // magnitude( a- b) > x && magnitude ( a+ b) > x &&
-    // check that unit_vector(a) != unit_vector(b) 
-    // check that unit_vector(a) + unit_vector(b)  != [0,0,0];
-*/
-/*
-   template <typename T>
-   quan::three_d::vect<typename quan::meta::binary_op<T,quan::meta::divides,T>::type> 
-   get_rotation_axis(quan::three_d::vect<T> const & vecta, quan::three_d::vect<T> const & vectb)
-   { 
-      return unit_vector(cross_product(vecta,vectb));
-   }
-
-   double constexpr magnitude_epsilon = 0.001;
-
-   quan::three_d::vect<int> mag_sign{1,1,-1};
-  */ 
 } // namespace
 
 void set_mag_sensor(quan::three_d::vect<double> const & in);
@@ -243,7 +231,6 @@ void onIdle()
   switch (result){
       case 1:
       // mag_sensor
-        // std::cout << "m\n";
          set_mag_sensor(vect_io);
          break;
       case 2: {
@@ -264,72 +251,22 @@ void onIdle()
   }
 
   if (update){
-    // std::cout <<"u" <<'\n';
      glutPostRedisplay();
   }
-
-  /*
-  if ( result != 0 ){
-      quan::three_d::vect<double> const temp
-      { ll_mag_vector.x * x_sign,
-        ll_mag_vector.y * y_sign,
-        ll_mag_vector.z * z_sign};
-      
-      auto v1 = unit_vector(temp);
-      // sanity check against zero length
-      if ( magnitude(v1) > magnitude_epsilon ){
-         quan::three_d::vect<double> constexpr base{1,0,0};
-         // check for opposite direction to base
-         if ( magnitude(base + v1) < magnitude_epsilon ){
-            //OK so rotate 180 around y or z
-            mag_rotation_axis = quan::three_d::vect<double>{0,1,0};
-            mag_rotation_angle = quan::angle::deg{180};
-         }else{
-              //check for parallel to base
-              if ( magnitude( base - v1) < magnitude_epsilon ){
-                   // identity
-                   mag_rotation_axis = base;
-                   mag_rotation_angle = quan::angle::deg{0};
-              }else{
-                  mag_rotation_axis = get_rotation_axis(base,v1);
-                  mag_rotation_angle = get_rotation_angle(base,v1);
-              }
-         }
-         glutPostRedisplay();
-      }
-   }
-  */
 }
 
 #if 0
-namespace {
-
-   // for testing
-   auto angle = 0.0_deg;
-}
-
-
 // for testing
 void onTimer(int value)
 {
-   quan::three_d::vect<double> base {1,0,0};
-
-   quan::three_d::x_rotation rotate{angle};
-
-   auto mag_vector = rotate(base);
-
-   angle += 2.0_deg;
-   if ( angle > 360.0_deg){ angle = 0.0_deg;}
-
-   mag_rotation_axis = get_rotation_axis(base,mag_vector);
-   mag_rotation_angle = get_rotation_angle(base,mag_vector);
-
+   # test code
    glutPostRedisplay();
    glutTimerFunc(100U,onTimer,1);
 }
 #endif
 
 namespace {
+  // display rotation increment on key press
    GLfloat incr = 10;
 }
 
@@ -388,11 +325,10 @@ int main(int argc, char** argv) {
    glutIdleFunc(onIdle);
    // testing
    // glutTimerFunc(500U,onTimer,1);
-
    glEnable(GL_CULL_FACE);
    glEnable(GL_DEPTH_TEST);
    glDepthMask(GL_TRUE);
-   glDepthFunc(GL_LESS);    /* pedantic, GL_LESS is the default */
+   glDepthFunc(GL_LESS);  
    glutMainLoop();
 
    delete serial_port;

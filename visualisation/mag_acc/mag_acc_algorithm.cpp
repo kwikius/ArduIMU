@@ -44,32 +44,47 @@ namespace {
    quan::three_d::vect<quan::magnetic_flux_density::uT> 
    mag_sensor = earth_magnetic_field;
 
-   quan::three_d::vect<int> mag_sign{1,1,1};
+   quan::three_d::vect<int> mag_sign{1,-1,-1}; // convert to NED
 
-   /*
+   /**
    * Initial acc_sensor position
    */
    quan::three_d::vect<quan::acceleration::m_per_s2>
    acc_sensor = earth_gravity;
 
-   quan::three_d::vect<int> acc_sign{-1,-1,1};
-
+   quan::three_d::vect<int> acc_sign{-1,1,-1}; // convert to NED
    
-
 }
+
+/**   convert North East Down to work in OpenGL
+*     TODO: Probably should do later to keep transform?
+*     so this is display specific
+*/
+template <typename T>
+void NEDtoOpenGL(quan::three_d::vect<T> & in)
+{
+     in.y = -in.y;
+}
+
 
 void set_mag_sensor(quan::three_d::vect<double> const & in)
 {
+   // convert to NED
    mag_sensor.x = in.x * mag_sign.x * 1.0_uT;
    mag_sensor.y = in.y * mag_sign.y * 1.0_uT;
    mag_sensor.z = in.z * mag_sign.z * 1.0_uT;
+
+   NEDtoOpenGL(mag_sensor);
 }
 
 void set_acc_sensor(quan::three_d::vect<double> const & in)
 {
+   // convert to NED
    acc_sensor.x = in.x * acc_sign.x * 1.0_m_per_s2;
    acc_sensor.y = in.y * acc_sign.y * 1.0_m_per_s2;
    acc_sensor.z = in.z * acc_sign.z * 1.0_m_per_s2;
+
+   NEDtoOpenGL(acc_sensor);
 }
 
 void set_gyr_sensor(quan::three_d::vect<double> const & in)
