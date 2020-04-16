@@ -92,7 +92,7 @@ void set_gyr_sensor(quan::three_d::vect<double> const & in)
 }
 
 /**
-* Simulate estimate of attitude from accelerometer and magnetometer.
+* Estimate sensor board attitude from accelerometer and magnetometer.
 *
 * Assumes that accelerometer is stationery so only gravitational forces apply.
 * The function inputs are the latest file local mag_sensor and acc_sensor readings.
