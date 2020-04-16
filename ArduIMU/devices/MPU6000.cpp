@@ -1,7 +1,9 @@
 
 #include <SPI.h>
 #include "MPU6000.h"
-#include "storage.h"
+#include "../storage.h"
+#include "../mpudata.h"
+#include "../runmode.h"
 
 namespace {
 
@@ -68,16 +70,6 @@ namespace {
  
    byte constexpr regAccelData = 59U;
 
-   // MPU6000 SPI functions
-//   byte MPU6000_SPI_read(byte reg)
-//   {
-//     digitalWrite(pinMpuCS, LOW);
-//     (void) SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
-//     byte const return_value = SPI.transfer(0);
-//     digitalWrite(pinMpuCS, HIGH);
-//     return(return_value);
-//   }
-
    void MPU6000_SPI_write(byte reg, byte data)
    {
      digitalWrite(pinMpuCS, LOW);
@@ -107,21 +99,123 @@ namespace {
    { 0.0_deg_per_s,0.0_deg_per_s,0.0_deg_per_s};
 
    quan::three_d::vect<float> gyro_gain{1.f,1.f,1.f};
+
+   bool mpu6000_initialised = false;
+
+   // ready ready to read but not read
+   // avaialable - resd
+   bool gyr_data_ready = false;
+   bool gyr_data_available = false;
+   bool acc_data_ready = false;
+   bool acc_data_available = false;
+
+   MpuData mpuData;
 }
 
-// return true if new data ready and clear flag
+namespace {
+
+   void read_data(byte reg, int16_t & result)
+   {
+     result = static_cast<int16_t>(SPI.transfer(0) << 8) | 
+                 static_cast<int16_t>(SPI.transfer(0));
+   }
+
+   void read_data(byte reg, quan::three_d::vect<int16_t> & result)
+   {
+      digitalWrite(pinMpuCS, LOW);
+         (void) SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
+         read_data(reg,result.x);
+         read_data(reg+2U,result.y);
+         read_data(reg+4U,result.z);
+      digitalWrite(pinMpuCS, HIGH);
+   }
+}
+
+// Read gyros and accel sensors on MPU6000
+void MPU6000read(MpuData & result)
+{
+   quan::three_d::vect<int16_t> raw_data;
+   {
+      read_data(regAccelData,raw_data);
+      auto const accel = raw_data * accel_resolution + accel_offset;
+      result.accel.x = accel.x * accel_gain.x;
+      result.accel.y = accel.y * accel_gain.y;
+      result.accel.z = accel.z * accel_gain.z;
+      acc_data_available = true;
+   }
+   {
+      read_data(regGyroData,raw_data);
+      auto const gyro = raw_data * gyro_resolution + gyro_offset;
+      result.gyro.x = gyro.x * gyro_gain.x;
+      result.gyro.y = gyro.y * gyro_gain.y;
+      result.gyro.z = gyro.z * gyro_gain.z;
+      gyr_data_available = true;
+   }
+}
+
 bool MPU6000dataReady()
 {
    cli();
    bool const result = newdata != 0U;
    newdata = 0U;
    sei();
+   if ( result){
+      acc_data_ready = true;
+      gyr_data_ready = true;
+   }
    return result;
 }
 
-// MPU6000 Initialization and configuration
+bool MPU6000AccDataReady()
+{
+   if ( acc_data_ready){
+      acc_data_ready = false;
+      return true;
+   }else{
+      return MPU6000dataReady();
+   }
+}
+
+bool MPU6000GyrDataReady()
+{
+   if( gyr_data_ready){
+      gyr_data_ready = false;
+      return true;
+   }else{
+      return MPU6000dataReady();
+   }
+}
+
+bool MPU6000AccRead(quan::three_d::vect<quan::acceleration_<float>::m_per_s2> & result)
+{
+   if (!acc_data_available){
+      MPU6000read(mpuData);
+   }
+   result = mpuData.accel;
+   acc_data_available = false;
+   return true;
+}
+
+bool MPU6000GyrRead(
+      quan::three_d::vect<
+         quan::reciprocal_time_<
+            quan::angle_<float>::deg
+         >::per_s 
+      > & result)
+{
+   if (!gyr_data_available){
+      MPU6000read(mpuData);
+   }
+   result = mpuData.gyro;
+   gyr_data_available = false;
+   return true;
+}
+
 void MPU6000init(void)
 {
+   if ( mpu6000_initialised){
+      return;
+   }
    // MPU6000 chip select setup
    pinMode(pinMpuCS, OUTPUT);
    digitalWrite(pinMpuCS, HIGH);
@@ -193,43 +287,9 @@ void MPU6000init(void)
    MPU6000_SPI_write(regMpuIntEnable,bitDataReadyIntEnable);         // INT: Raw data ready
 
    SPI.setClockDivider(SPI_CLOCK_DIV2);      // SPI at 8Mhz (on 16Mhz clock)
-}
 
-namespace {
+   mpu6000_initialised = true;
 
-   void read_data(byte reg, int16_t & result)
-   {
-     result = static_cast<int16_t>(SPI.transfer(0) << 8) | 
-                 static_cast<int16_t>(SPI.transfer(0));
-   }
-
-   void read_data(byte reg, quan::three_d::vect<int16_t> & result)
-   {
-      digitalWrite(pinMpuCS, LOW);
-         (void) SPI.transfer(static_cast<byte>(reg | 0x80)); // Set most significant bit
-         read_data(reg,result.x);
-         read_data(reg+2U,result.y);
-         read_data(reg+4U,result.z);
-      digitalWrite(pinMpuCS, HIGH);
-   }
-
-}
-// Read gyros and accel sensors on MPU6000
-void MPU6000read(MpuData & result)
-{
-   quan::three_d::vect<int16_t> raw_data;
-   {
-      read_data(regAccelData,raw_data);
-      auto const accel = raw_data * accel_resolution + accel_offset;
-      result.accel.x = accel.x * accel_gain.x;
-      result.accel.y = accel.y * accel_gain.y;
-      result.accel.z = accel.z * accel_gain.z;
-   }
-   {
-      read_data(regGyroData,raw_data);
-      auto const gyro = raw_data * gyro_resolution + gyro_offset;
-      result.gyro.x = gyro.x * gyro_gain.x;
-      result.gyro.y = gyro.y * gyro_gain.y;
-      result.gyro.z = gyro.z * gyro_gain.z;
-   }
+   MpuData prev_result;
+   quan::time_<uint32_t>::ms time_stamp;
 }

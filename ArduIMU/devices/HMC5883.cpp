@@ -13,10 +13,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "HMC5883.h"
-#include "print_P.h"
-
-#include "storage.h"
-
+#include "../print_P.h"
+#include "../storage.h"
 #include <quan/fixed_quantity/literal.hpp>
 
 namespace {
@@ -83,8 +81,7 @@ bool HMC5883dataReady()
    return result;
 }
 
-bool HMC5883read( quan::three_d::vect<quan::magnetic_flux_density::uT> & result, mag_output_style_t output_style)
-
+bool HMC5883read( quan::three_d::vect<quan::magnetic_flux_density::uT> & result)
 {
    int i = 0;
    byte buff[6];
@@ -108,14 +105,13 @@ bool HMC5883read( quan::three_d::vect<quan::magnetic_flux_density::uT> & result,
       mag.z = (((int16_t)buff[2]) << 8) | buff[3] ;    // Z axis
 
       auto temp = mag * mag_resolution ;
-      if ( output_style == MagOutputCalibrated_uT){
-         temp.x *= mag_gain.x;
-         temp.y *= mag_gain.y;
-         temp.z *= mag_gain.z;
-         result = temp - mag_offset;
-      }else{
-         result = temp;
-      }
+
+      temp.x *= mag_gain.x;
+      temp.y *= mag_gain.y;
+      temp.z *= mag_gain.z;
+
+      result = temp - mag_offset;
+
       return true;
    }else{
       println_P(PSTR("read mag failed"));

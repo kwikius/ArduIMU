@@ -1,15 +1,70 @@
 
 #include <Arduino.h>
-#include "print_P.h"
 #include <quan/time.hpp>
-#include "HMC5883.h"
-#include "MPU6000.h"
+#include <quan/acceleration.hpp>
+#include "sensors.h"
 #include "runmode.h"
+#include "print_P.h"
+
+namespace {
+
+   quan::time_<uint32_t>::ms 
+   q_millis();
+   void doStartupLeds();
+   void doStartupOptions();
+   void doOptUserMenu();
+   void initialiseSensors();
+   void updateLED();
+   void acc_output(quan::three_d::vect<quan::acceleration_<float>::m_per_s2> const & q);
+   void gyr_output(
+      quan::three_d::vect<
+         quan::reciprocal_time_<
+            quan::angle_<float>::deg 
+         >::per_s
+      > const & q);
+   void mag_output(quan::three_d::vect<quan::magnetic_flux_density_<float>::uT> const & q);
+}
+
+extern "C" void setup()
+{
+   // Serial in has 64 byte buffer
+   Serial.begin(38400);
+
+   doStartupOptions();
+
+   doStartupLeds();
+   
+   doOptUserMenu();
+
+   initialiseSensors();
+
+   println_P(PSTR("... setup complete"));
+}
+
+extern "C" void loop()
+{
+   uint8_t const runMode = runmode::get();
+
+   if ( runMode & runmode::bitMagOutput ) {
+      mag_sensor::update(q_millis());  
+   }
+
+   if ( runMode & runmode::bitAccelOutput ){
+      acc_sensor::update(q_millis());
+   }
+
+   if( runMode & runmode::bitGyroOutput ){
+      gyr_sensor::update(q_millis());
+   }
+
+   updateLED();
+}
 
 void user_menu();
 
-/// Pins on ArduIMU_V3 are numbered as Arduino Pro Mini
 namespace {
+
+   // Pins on ArduIMU_V3 are numbered as Arduino Pro Mini
    // multiplex between Console I/O and GPS
    int constexpr pinSerialMux = 7;
       int constexpr pinStateSerialMuxGPS = HIGH;
@@ -18,71 +73,122 @@ namespace {
    int constexpr pinLedRED = 5;
    int constexpr pinLedBLUE = 6;
    int constexpr pinLedYELLOW = 13; // also  SPI SCK 
-}
 
-inline 
-quan::time_<unsigned long>::ms 
-q_millis()
-{
-   return quan::time_<unsigned long>::ms{millis()};
-}
+   inline 
+   quan::time_<uint32_t>::ms 
+   q_millis()
+   {
+      return quan::time_<uint32_t>::ms{millis()};
+   }
 
-extern "C" void setup()
-{
-   // Serial in has 64 byte buffer
-   Serial.begin(38400);
+   void mag_output(quan::three_d::vect<quan::magnetic_flux_density_<float>::uT> const & q)
+   {
+      print_P(PSTR("mag "));
+      Serial.print(q.x.numeric_value());
+      Serial.print(' ');
+      Serial.print(q.y.numeric_value());
+      Serial.print(' ');
+      Serial.print(q.z.numeric_value());
+      Serial.println("");
+   }
 
-   println_P(PSTR("ArduIMU setup ..."));
-   println_P(PSTR("[RET] * 3 for menu"));
+   void acc_output(quan::three_d::vect<quan::acceleration_<float>::m_per_s2> const & q)
+   {
+      print_P(PSTR("acc "));
+      Serial.print(q.x.numeric_value());
+      Serial.print(' ');
+      Serial.print(q.y.numeric_value());
+      Serial.print(' ');
+      Serial.print(q.z.numeric_value());
+      Serial.println("");
+   }
 
-   pinMode(pinLedRED,OUTPUT); 
-   digitalWrite(pinLedRED,HIGH);
-   pinMode(pinLedBLUE,OUTPUT); 
-   digitalWrite(pinLedBLUE,LOW);
-   pinMode(pinLedYELLOW,OUTPUT); 
-   digitalWrite(pinLedYELLOW,LOW);
+   void gyr_output(
+      quan::three_d::vect<
+         quan::reciprocal_time_<
+            quan::angle_<float>::deg 
+         >::per_s
+      > const & q)
+   {
+      print_P(PSTR("gyr "));
+      Serial.print(q.x.numeric_value().numeric_value());
+      Serial.print(' ');
+      Serial.print(q.y.numeric_value().numeric_value());
+      Serial.print(' ');
+      Serial.print(q.z.numeric_value().numeric_value());
+      Serial.println("");
+   }
 
-   delay(500);
-   digitalWrite(pinLedBLUE,HIGH);
-   delay(500);
-   digitalWrite(pinLedYELLOW,HIGH);
-   delay(500);
-   digitalWrite(pinLedRED,LOW);
-   delay(500);
-   digitalWrite(pinLedYELLOW,LOW);
-   delay(500);
-   digitalWrite(pinLedRED,LOW);
+   void doStartupOptions()
+   {
+      println_P(PSTR("ArduIMU setup ..."));
+      println_P(PSTR("[RET] * 3 for menu"));
+   }
 
-   digitalWrite(pinLedBLUE,LOW);
-
-   // look for user input
-   if ( Serial.available() >= 3){
-
-      bool menu_mode = true;
-      for ( int i = 0; i < 3; ++i){
-         auto ch = Serial.read();
-         if (ch != '\r'){
-            Serial.print(ch);
-            println_P(PSTR(" invalid input"));
-            menu_mode = false;
-            break;
+   void doOptUserMenu()
+   {
+      if ( Serial.available() >= 3){
+         bool menu_mode = true;
+         for ( int i = 0; i < 3; ++i){
+            auto ch = Serial.read();
+            if (ch != '\r'){
+               Serial.print(ch);
+               println_P(PSTR(" invalid input"));
+               menu_mode = false;
+               break;
+            }
+         }
+         if ( menu_mode){
+            user_menu();
          }
       }
+   }
 
-      if ( menu_mode){
-           user_menu();
+   void initialiseSensors()
+   {
+      auto sensors_initialised = [](){ 
+         return 
+            mag_sensor::init() 
+         && acc_sensor::init() 
+         && gyr_sensor::init();
+      };
+
+      // initialise callbacks on new data
+      mag_sensor::setUpdateCallback(mag_output);
+      acc_sensor::setUpdateCallback(acc_output);
+      gyr_sensor::setUpdateCallback(gyr_output);
+      
+      if ( sensors_initialised()){
+         runmodeInit();
+      }else{
+         for(;;) { 
+            println_P(PSTR("sensor init failed"));
+            delay(1000);
+         }
       }
    }
-   HMC5883init();
-   MPU6000init();
 
-   runmodeInit();
-   // read eeprom values
-   println_P(PSTR("... setup complete"));
 
-}
-
-namespace{
+   void doStartupLeds()
+   {
+      pinMode(pinLedRED,OUTPUT); 
+      digitalWrite(pinLedRED,HIGH);
+      pinMode(pinLedBLUE,OUTPUT); 
+      digitalWrite(pinLedBLUE,LOW);
+      pinMode(pinLedYELLOW,OUTPUT); 
+      digitalWrite(pinLedYELLOW,LOW);
+      delay(500);
+      digitalWrite(pinLedBLUE,HIGH);
+      delay(500);
+      digitalWrite(pinLedYELLOW,HIGH);
+      delay(500);
+      digitalWrite(pinLedRED,LOW);
+      delay(500);
+      digitalWrite(pinLedYELLOW,LOW);
+      delay(500);
+      digitalWrite(pinLedRED,LOW);
+      digitalWrite(pinLedBLUE,LOW);
+   }
 
    QUAN_QUANTITY_LITERAL(time,ms)
 
@@ -91,95 +197,19 @@ namespace{
    auto prev_read = 0_ms_U;
    auto pin_state = HIGH;
 
+   void updateLED()
+   {
+      auto const now = q_millis();
 
-// mag runtime state
-
-   auto mag_update_period = 100_ms_U;
-   enum mag_read_state_t {
-      idle,
-      waiting_for_ready,
-   }mag_read_state = idle;
-
-}
-
-void magOutput(quan::time_<unsigned long>::ms const & now)
-{
-   if ( mag_read_state == idle){
-      if ( (now - prev_read) >= mag_update_period ){
-         prev_read = now;
-         bool result = HMC5883startMeasurement();
-         if (result){
-            mag_read_state = waiting_for_ready;
+      if( (now - prev_led) >= 500_ms_U ){
+         prev_led = now;
+         if ( pin_state == HIGH){
+            pin_state = LOW;
+            digitalWrite(pinLedRED,LOW);
          }else{
-            println_P(PSTR("mag start measurement failed"));
+            pin_state = HIGH;
+            digitalWrite(pinLedRED,HIGH);
          }
       }
-   }else{
-      if ( HMC5883dataReady()){
-         quan::three_d::vect<quan::magnetic_flux_density::uT>  result;
-         if ( HMC5883read(result,MagOutputCalibrated_uT) ){
-            print_P(PSTR("mag "));
-            Serial.print(result.x.numeric_value());
-            Serial.print(' ');
-            Serial.print(result.y.numeric_value());
-            Serial.print(' ');
-            Serial.print(result.z.numeric_value());
-            Serial.println("");
-         }
-         mag_read_state = idle;
-      }
    }
 }
-
-void mpuOutput(quan::time_<unsigned long>::ms const & now)
-{
-   if ( MPU6000dataReady()){
-      
-      uint8_t const runMode = runmode::get();
-
-      MpuData data;
-      MPU6000read(data);
-      if ( runMode & runmode::bitAccelOutput ){
-         print_P(PSTR("acc "));
-         Serial.print(data.accel.x.numeric_value());
-         Serial.print(' ');
-         Serial.print(data.accel.y.numeric_value());
-         Serial.print(' ');
-         Serial.print(data.accel.z.numeric_value());
-         Serial.println("");
-      }
-      if (runMode & runmode::bitGyroOutput ){
-         print_P(PSTR("gyr "));
-         Serial.print(data.gyro.x.numeric_value().numeric_value());
-         Serial.print(' ');
-         Serial.print(data.gyro.y.numeric_value().numeric_value());
-         Serial.print(' ');
-         Serial.print(data.gyro.z.numeric_value().numeric_value());
-         Serial.println("");
-      }
-   }
-}
-
-extern "C" void loop()
-{
-   auto const now = q_millis();
-   uint8_t const runMode = runmode::get();
-
-   if ( runMode & runmode::bitMagOutput ) {
-      magOutput(now);
-   }
-   if ( runMode & (runmode::bitAccelOutput | runmode::bitGyroOutput) ){
-      mpuOutput(now);
-   }
-   if( (now - prev_led) >= 500_ms_U ){
-      prev_led = now;
-      if ( pin_state == HIGH){
-         pin_state = LOW;
-         digitalWrite(pinLedRED,LOW);
-      }else{
-         pin_state = HIGH;
-         digitalWrite(pinLedRED,HIGH);
-      }
-   }
-}
-

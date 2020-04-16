@@ -63,9 +63,8 @@ namespace {
 template <typename T>
 void NEDtoOpenGL(quan::three_d::vect<T> & in)
 {
-     in.y = -in.y;
+   in.y = -in.y;
 }
-
 
 void set_mag_sensor(quan::three_d::vect<double> const & in)
 {
@@ -95,11 +94,10 @@ void set_gyr_sensor(quan::three_d::vect<double> const & in)
 /**
 * Simulate estimate of attitude from accelerometer and magnetometer.
 *
-* "crisp" readings. We can add noise later!
 * Assumes that accelerometer is stationery so only gravitational forces apply.
-* The function inputs x y z angles are the zyx euler angles ( e.g rotate z then rotate y then rotate x)
-* used to rotate the gravity and compass vectors to find the simulated sensor inputs
-* Then the proposed algorithm computes the the original vectors from them.
+* The function inputs are the latest file local mag_sensor and acc_sensor readings.
+* The proposed algorithm computes the orientation of the sensor board from them
+* and places in quat_out.
 *
 * \param[out] quat_out quaternion representing the resulting attitude.
 */
@@ -108,34 +106,27 @@ void find_attitude( quan::three_d::quat<double> & quat_out)
    // Calculate the angle between the accelerometer and the earth gravity vector
    // Rotation using qacc means that the z component is correct, but 
    // We cannot tell the xy orientation from this
-   // TODO covariance
    auto const qacc = rotation_from(acc_sensor,earth_gravity);
 
    // Now use qacc to rotate the mag_sensor reading to mag1.
    // mag1 will be correct in relation to the gravity axis
    auto const mag1 = qacc * mag_sensor;
 
-   // the z component of mag1 should be same as earth magnetic field if 
-   // mag1 is orientated correctly in vertical direction
-   //TODO covariance
-  // success = abs(earth_magnetic_field.z - mag1.z) < 1.e-6_uT;
-//   QUAN_CHECK( success  );
-//   if ( ! success){ return false;}
-
-   // find angle around z axis from mag1 to earth magnetic field vector
-   // It is important to use the rotation around
-   // the z axis, not the obvious quaternion that will rotate mag1 to earth magnetic field directly
+   // the z component of mag1 is same as earth magnetic field if 
+   // mag1 is orientated correctly in vertical direction.
+   // Find angle around z axis from mag1 to earth magnetic field vector.
+   // It is important to use the rotation around the z axis, not the 
+   // obvious quaternion that will rotate mag1 to earth magnetic field directly.
    quan::angle::deg const v1_angle = quan::atan2(mag1.y,mag1.x);
    // TODO do this only when earth magnetic field changes
    quan::angle::deg const v2_angle = quan::atan2(earth_magnetic_field.y,earth_magnetic_field.x);
 
    quan::angle::deg const angle = (v2_angle - v1_angle);
 
-   // calculate the quat that rotates 'angle' around z axis
+   // Calculate the quat that rotates mag1 around z axis to earth magntic field vector.
    auto const qmag = quatFrom(quan::three_d::vect<double>{0,0,1},angle);
 
-   // combine the two rotation quaternions (in correct order) to give one rotation
-   // representing the attitude of the object
+   // Combine the two rotation quaternions (in correct order) to give one rotation
+   // representing the attitude of the object.
    quat_out = hamilton_product(qmag,qacc);
 }
-

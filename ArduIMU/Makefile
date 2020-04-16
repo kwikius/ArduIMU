@@ -56,7 +56,9 @@ TARGET = ArduIMU
 
 arduino_cpp_objects = CDC.o HardwareSerial.o Print.o Stream.o WString.o main.o new.o 
 arduino_c_objects = WInterrupts.o wiring.o wiring_digital.o
-local_objects = main_loop.o user_menu.o storage.o print_P.o menu.o HMC5883.o MPU6000.o
+local_objects = main_loop.o user_menu.o storage.o print_P.o menu.o 
+device_objects = HMC5883.o MPU6000.o
+sensor_objects = mag_sensor.o acc_sensor.o gyr_sensor.o
 
 OBJDIR := obj
 BINDIR := bin
@@ -64,11 +66,12 @@ BINDIR := bin
 ARDUINO_C_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_c_objects))
 ARDUINO_CPP_OBJECTS = $(addprefix $(OBJDIR)/,$(arduino_cpp_objects))
 LOCAL_OBJECTS = $(addprefix $(OBJDIR)/,$(local_objects))
+DEVICE_OBJECTS = $(addprefix $(OBJDIR)/,$(device_objects))
+SENSOR_OBJECTS = $(addprefix $(OBJDIR)/,$(sensor_objects))
 
-OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) $(LOCAL_OBJECTS) \
+OBJECTS = $(ARDUINO_C_OBJECTS) $(ARDUINO_CPP_OBJECTS) \
+ $(LOCAL_OBJECTS) $(DEVICE_OBJECTS) $(SENSOR_OBJECTS) \
  $(OBJDIR)/eeprom.o  $(OBJDIR)/wire.o $(OBJDIR)/twi.o $(OBJDIR)/spi.o
-
-# $(OBJDIR)/menu.o 
 
 INCLUDES = -I$(QUAN_INCLUDE_PATH) -I$(ARDUINO_SRC_PATH) -I$(ARDUINO_EXTRA_PATH) \
  -I$(ARDUINO_PATH)libraries/Wire/ \
@@ -76,8 +79,6 @@ INCLUDES = -I$(QUAN_INCLUDE_PATH) -I$(ARDUINO_SRC_PATH) -I$(ARDUINO_EXTRA_PATH) 
  -I$(ARDUINO_PATH)libraries/SPI/ \
  -I$(ARDUINO_PATH)libraries/EEPROM/ \
  -Ilibraries/AP_GPS/
-
- #-Ilibraries/Menu/ \
 
 ELFFILE =     $(BINDIR)/$(TARGET).elf
 HEXFILE =     $(BINDIR)/$(TARGET).hex
@@ -131,6 +132,12 @@ $(ARDUINO_C_OBJECTS) : $(OBJDIR)/%.o : $(ARDUINO_SRC_PATH)%.c
 	$(CC1) $(CFLAGS_C) -c $< -o $@
 
 $(LOCAL_OBJECTS) : $(OBJDIR)/%.o : %.cpp
+	$(CC) $(CFLAGS_CPP) -c $< -o $@
+
+$(DEVICE_OBJECTS) : $(OBJDIR)/%.o : devices/%.cpp
+	$(CC) $(CFLAGS_CPP) -c $< -o $@
+
+$(SENSOR_OBJECTS) : $(OBJDIR)/%.o : sensors/%.cpp
 	$(CC) $(CFLAGS_CPP) -c $< -o $@
 
 #$(OBJDIR)/menu.o : libraries/Menu/menu.cpp
