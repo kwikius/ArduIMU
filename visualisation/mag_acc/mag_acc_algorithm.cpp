@@ -103,7 +103,8 @@ void set_gyr_sensor(quan::three_d::vect<double> const & in)
 */
 void find_attitude( quan::three_d::quat<double> & quat_out)
 {
-   // Calculate the angle between the accelerometer and the earth gravity vector
+   // Calculate the quaternion representing rotation between the 
+   // accelerometer and the earth gravity vector.
    // Rotation using qacc means that the z component is correct, but 
    // We cannot tell the xy orientation from this
    auto const qacc = rotation_from(acc_sensor,earth_gravity);
