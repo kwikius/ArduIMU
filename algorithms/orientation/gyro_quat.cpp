@@ -1,6 +1,4 @@
 
-
-
 #include <quan/three_d/out/quat.hpp>
 #include <quan/three_d/out/vect.hpp>
 #include <quan/three_d/make_vect.hpp>
