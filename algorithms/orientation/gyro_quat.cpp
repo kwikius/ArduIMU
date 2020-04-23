@@ -34,14 +34,14 @@ namespace {
    }
 
    auto constexpr gyro_vect = quan::three_d::make_vect(
-      quan::constant::pi/90*0.0_per_s,
-      quan::constant::pi/90*0.0_per_s,
-      quan::constant::pi/90*1.0_per_s
+      quan::constant::pi/180*10.0_per_s,
+      quan::constant::pi/180*10.0_per_s,
+      quan::constant::pi/180*10.0_per_s
    );
    // sensor frame
    quan::three_d::quat<double> constexpr sensor_frame_base{1.0,0.0,0.0,0.0};
 
-   auto constexpr dt = 1_s;
+   auto constexpr dt = 0.1_s;
 
    int constexpr n_iters = 20;
 
@@ -55,11 +55,11 @@ namespace {
 void madgwick_rot()
 {
    auto sensor_frame = sensor_frame_base;
-   auto const qR = quan::three_d::quat<per_s>{0.0_per_s,gyro_vect.x,gyro_vect.y,gyro_vect.z} * dt;
-   std::cout << "qR = " << qR <<'\n';
+   auto const qRt = quan::three_d::quat<per_s>{0.0_per_s,gyro_vect.x,gyro_vect.y,gyro_vect.z} * dt;
+   std::cout << "qRt = " << qRt <<'\n';
    for ( auto i = 0; i < n_iters; ++i){
       update_angle(i);
-      auto dqr = 1.0/2.0 * hamilton_product(sensor_frame,qR);
+      auto dqr = 1.0/2.0 * hamilton_product(sensor_frame,conjugate(qRt));
       sensor_frame = unit_quat(sensor_frame + dqr);
       std::cout << "new frame 1 = " <<  sensor_frame << '\n';
       quan::three_d::vect<quan::angle::deg> frame_angles;
@@ -71,12 +71,14 @@ void madgwick_rot()
 // seems more accurate at larger angles if more work
 void axis_angle_to_quat_rot()
 {
-   auto const qR = quatFrom(unit_vector(gyro_vect),magnitude(gyro_vect) * dt);
-   std::cout << "qR = " << qR <<'\n';
+   // separating the direction and magnitude
+   auto const qRt = quatFrom(unit_vector(gyro_vect),magnitude(gyro_vect) * dt);
+   std::cout << "qRt = " << qRt <<'\n';
    auto sensor_frame = sensor_frame_base;
    for ( auto i = 0; i < n_iters; ++i){
       update_angle(i);
-      sensor_frame = unit_quat(hamilton_product(sensor_frame,qR));
+      // N.B conjugate changes rotation dir
+      sensor_frame = unit_quat(hamilton_product(sensor_frame,conjugate(qRt)));
       std::cout << "new frame 5 = " << sensor_frame << '\n';
       quan::three_d::vect<quan::angle::deg> frame_angles;
       toZYXeulerAngles(sensor_frame,frame_angles);
