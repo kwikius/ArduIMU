@@ -1,4 +1,6 @@
 
+
+
 #include <quan/two_d/out/vect.hpp>
 #include <quan/three_d/out/vect.hpp>
 #include <quan/three_d/make_vect.hpp>
@@ -6,16 +8,14 @@
 #include <quan/three_d/rotation.hpp>
 #include <quan/three_d/rotation_from.hpp>
 #include <quan/out/angle.hpp>
-#include <quan/three_d/quat_out.hpp>
-#include <quan/basic_matrix/basic_matrix.hpp>
+#include <quan/three_d/out/quat.hpp>
 #include <quan/out/magnetic_flux_density.hpp>
 #include <quan/out/acceleration.hpp>
+#include <quan/out/angle.hpp>
 #include <quan/out/reciprocal_time.hpp>
 #include <quan/out/time.hpp>
 #include <quan/utility/timer.hpp>
-
-#include <fstream>
-#include <iomanip>
+#include <quan/three_d/slerp.hpp>
 
 namespace {
 
@@ -63,7 +63,7 @@ namespace {
    constexpr earth_gravity{0.0_m_per_s2,0.0_m_per_s2,-quan::acceleration::g};
 
    /** 
-   * Initial mag sensor position
+   * Latest mag sensor reading in uT
    */
    quan::three_d::vect<quan::magnetic_flux_density::uT> 
    mag_sensor = earth_magnetic_field;
@@ -71,19 +71,20 @@ namespace {
    quan::three_d::vect<int> mag_sign{1,-1,-1}; // convert to NED
 
    /**
-   * Initial acc_sensor position
+   * Latest acc senosr reading in m.s-2
    */
    quan::three_d::vect<quan::acceleration::m_per_s2>
    acc_sensor = earth_gravity;
 
    quan::three_d::vect<int> acc_sign{-1,1,-1}; // convert to NED
-
+   /**
+   *  Latest Gyro sensor reading in degrees per sec
+   */
    quan::three_d::vect<
       quan::reciprocal_time::per_s
    > gyr_sensor{0.0_per_s,0.0_per_s,0.0_per_s};
 
    quan::three_d::vect<int> gyr_sign{-1,1,-1}; // convert to NED
-   
 }
 
 /**   convert North East Down to work in OpenGL
@@ -98,7 +99,7 @@ void NEDtoOpenGL(quan::three_d::vect<T> & in)
 
 void set_mag_sensor(quan::three_d::vect<double> const & in)
 {
-   // convert to NED
+   // convert from double to uT in NED
    mag_sensor.x = in.x * mag_sign.x * 1.0_uT;
    mag_sensor.y = in.y * mag_sign.y * 1.0_uT;
    mag_sensor.z = in.z * mag_sign.z * 1.0_uT;
@@ -108,7 +109,7 @@ void set_mag_sensor(quan::three_d::vect<double> const & in)
 
 void set_acc_sensor(quan::three_d::vect<double> const & in)
 {
-   // convert to NED
+   // convert from double to m.s-2 in NED
    acc_sensor.x = in.x * acc_sign.x * 1.0_m_per_s2;
    acc_sensor.y = in.y * acc_sign.y * 1.0_m_per_s2;
    acc_sensor.z = in.z * acc_sign.z * 1.0_m_per_s2;
@@ -117,9 +118,9 @@ void set_acc_sensor(quan::three_d::vect<double> const & in)
 }
 
 
-// input is in degrees per sec
 void set_gyr_sensor(quan::three_d::vect<double> const & in)
 {
+   // input is in degrees per sec
    typedef quan::reciprocal_time_<quan::angle::rad>::per_s rad_per_s;
   // vect of rad_per_s is used to convert from deg_per_s
    quan::three_d::vect<rad_per_s> v;
@@ -131,6 +132,47 @@ void set_gyr_sensor(quan::three_d::vect<double> const & in)
    // vect of rad_per_s has implicit conversion to per_s
    gyr_sensor = v;
    NEDtoOpenGL(gyr_sensor);
+}
+
+/**
+* Estimate sensor board attitude from accelerometer and magnetometer.
+*
+* Assumes that accelerometer is stationery so only gravitational forces apply.
+* The function inputs are the latest file local mag_sensor and acc_sensor readings.
+* The proposed algorithm computes the orientation of the sensor board from them
+* and places in quat_out.
+*
+* \param[out] quat_out quaternion representing the resulting attitude.
+*/
+void find_mag_acc_attitude( quan::three_d::quat<double> & quat_out)
+{
+   // Calculate the quaternion representing rotation between the 
+   // accelerometer and the earth gravity vector.
+   // Rotation using qacc means that the z component is correct, but 
+   // We cannot tell the xy orientation from this
+   auto const qacc = rotation_from(acc_sensor,earth_gravity);
+
+   // Now use qacc to rotate the mag_sensor reading to mag1.
+   // mag1 will be correct in relation to the gravity axis
+   auto const mag1 = qacc * mag_sensor;
+
+   // the z component of mag1 is same as earth magnetic field if 
+   // mag1 is orientated correctly in vertical direction.
+   // Find angle around z axis from mag1 to earth magnetic field vector.
+   // It is important to use the rotation around the z axis, not the 
+   // obvious quaternion that will rotate mag1 to earth magnetic field directly.
+   quan::angle::deg const v1_angle = quan::atan2(mag1.y,mag1.x);
+   // TODO do this only when earth magnetic field changes
+   quan::angle::deg const v2_angle = quan::atan2(earth_magnetic_field.y,earth_magnetic_field.x);
+
+   quan::angle::deg const angle = (v2_angle - v1_angle);
+
+   // Calculate the quat that rotates mag1 around z axis to earth magntic field vector.
+   auto const qmag = quatFrom(quan::three_d::vect<double>{0,0,1},angle);
+
+   // Combine the two rotation quaternions (in correct order) to give one rotation
+   // representing the attitude of the object.
+   quat_out = hamilton_product(qmag,qacc);
 }
 
 namespace {
@@ -154,4 +196,23 @@ void find_gyr_attitude(quan::three_d::quat<double> const & sensor_frame, quan::t
    
    auto const qRt = quatFrom(unit_vector(gyr_sensor),magnitude(gyr_sensor) * dt);
    quat_out = unit_quat(hamilton_product(sensor_frame,conjugate(qRt)));
+}
+
+/**
+* Complementary filter. Combine mag accelerometer calculation and gyro algorithm.
+*
+* \param[in] Quaternion representing current attitude.
+* \param[out] Quaternion representing new attitude.
+*/
+void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three_d::quat<double> & quat_out)
+{
+   quan::three_d::quat<double> qMagAcc;
+   find_mag_acc_attitude(qMagAcc);
+
+   quan::three_d::quat<double> qGyr;
+   find_gyr_attitude(sensor_frame,qGyr);
+
+   // interpolation coefficient
+   double constexpr k = 0.05;
+   quat_out = slerp(qGyr,qMagAcc,k);
 }

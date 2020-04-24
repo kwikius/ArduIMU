@@ -22,6 +22,9 @@ https://cs.lmu.edu/~ray/notes/openglexamples/
 #include <quan/three_d/rotation.hpp>
 #include <quan/basic_matrix/basic_matrix.hpp>
 
+int parse_sp(quan::serial_port& sp, quan::three_d::vect<double> & out);
+void find_attitude( quan::three_d::quat<double> & quat_out);
+
 void reshape(GLint w, GLint h) {
   glViewport(0, 0, w, h);
   GLfloat aspect = (GLfloat)w / (GLfloat)h;
@@ -230,9 +233,7 @@ namespace {
 }
 
 #if 1
-int parse_sp(quan::serial_port& sp, quan::three_d::vect<double> & out);
 void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three_d::quat<double> & quat_out);
-
 void onIdle()
 {
   // read input mag vector to local if new data available
@@ -248,6 +249,10 @@ void onIdle()
       case 2: {
       // acc_sensor
             set_acc_sensor(vect_io);
+           // quan::three_d::quat<double> rot_quat;
+             // find_attitude(rot_quat);
+             // setRotationFrom(rot_quat);
+             // update = true;
          }
          break;
       case 4:{
