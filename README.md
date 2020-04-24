@@ -50,17 +50,7 @@ Enter 'mag_ofst x y z' where x y z are the offsets from calibration.
 Enter 'mag_calb true' to use calibrated rather than raw data.
 Compass output is enabled via adding 'mag' to the user menu 'run_mode' arguments.
 
-Compass visualisation
----------------------
 
-You can use the App in visualisation/compass to view a visualisation of the calibrated compass output.
-Connect ArduIMU to usb using a usb/serial cable and start the application.
-You should see the compass needle turning in the visualisation.
-Note that you are riding onboard the compass rather than vice versa.
-For best results align the compass x , y , z axis on screen to your orientation using the rotation keys below.
-'l' 'r' = yaw  left | right
-'u' 'd' = pitch up | down
-'c' 'a' = roll  clockwise | anti-clockwise
 
 Accelerometer Calibration
 -------------------------
@@ -81,6 +71,45 @@ Offset can be entered via user menu. Set x y z gains to 1 unless you have access
 to some means to rotate the device and calculate gain that way. 
 Enter 'gyr_cal true' to use calibrated rather than raw data.
 Gyroscope output is enabled via adding 'gyr' to the user menu 'run_mode' arguments.
+
+Compass visualisation
+---------------------
+
+You can use the App in visualisation/compass to view a visualisation of the calibrated compass output
+in OpenGL. Connect ArduIMU to usb using a usb/serial cable and start the application.
+You should see the compass needle turning in the visualisation.
+Note that you are riding onboard the compass rather than vice versa.
+For best results align the compass x , y , z axis on screen to your orientation using the rotation keys below.
+'l' 'r' = yaw  left | right
+'u' 'd' = pitch up | down
+'c' 'a' = roll  clockwise | anti-clockwise
+
+Compass-Accelerometer visualisation
+-----------------------------------
+
+You can use the App in Visualisation/mag_acc to view the combined compass and acc in OpenGL. If you have good 
+calibration of compass and accelerometer, the visualisation should track the sensor attitude now, though a little jerky.
+View keys as above
+
+Gyro visualisation
+-----------------------------------
+
+You can use the App in Visualisation/gyro to view the gyro output in OpenGL. If you have good calibration
+, the visualisation should track the sensor movement reasonably well, but cant maintain attitude.
+View keys as above.
+
+Complementary filter visualisation
+----------------------------------
+
+Use the app in Visualisation/complementary to view a complete working complementary IMU filter in OpenGL. If all your 
+calibration is done then this will give a pretty good representation of the sensor attitude.
+View keys as above.
+
+
+
+
+
+
 
 
 
