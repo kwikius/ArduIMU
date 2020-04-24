@@ -117,7 +117,6 @@ void set_acc_sensor(quan::three_d::vect<double> const & in)
    NEDtoOpenGL(acc_sensor);
 }
 
-
 void set_gyr_sensor(quan::three_d::vect<double> const & in)
 {
    // input is in degrees per sec
