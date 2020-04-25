@@ -1,6 +1,4 @@
 
-
-
 #include <quan/two_d/out/vect.hpp>
 #include <quan/three_d/out/vect.hpp>
 #include <quan/three_d/make_vect.hpp>
@@ -45,7 +43,7 @@ namespace {
    {
       return quan::reciprocal_time_<
         quan::angle::rad 
-      >::per_s{};// {quan::angle::rad{v}};
+      >::per_s{quan::angle::rad{v}};
    }
 
    /** earth magnetic field density vector at my loc
