@@ -28,7 +28,7 @@ namespace {
 extern "C" void setup()
 {
    // Serial in has 64 byte buffer
-   Serial.begin(38400);
+   Serial.begin(115200);
 
    doStartupOptions();
 

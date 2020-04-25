@@ -212,9 +212,6 @@ void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three
    find_gyr_attitude(sensor_frame,qGyr,dt);
 
    // interpolation coefficient
-   // k = 0.5 * dt/ 1.0_s  
-   // dt = 0.1 -> k= 0.05
-   // dt = 0.05 -> k = 0.025
    double const k = 1 * dt/ 1.0_s;
    quat_out = slerp(qGyr,qMagAcc,k);
 }

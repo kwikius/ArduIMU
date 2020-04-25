@@ -321,7 +321,7 @@ void onKeyboard(unsigned char key,int x, int y)
 int main(int argc, char** argv) {
 
    serial_port= new quan::serial_port("/dev/ttyUSB0");
-   serial_port->init(B38400);
+   serial_port->init(B115200);
    if (!serial_port->good()){
       std::cout << "serial port open failed\n";
       delete serial_port;
