@@ -43,7 +43,7 @@ namespace {
    QUAN_QUANTITY_LITERAL(time,s);
    QUAN_QUANTITY_LITERAL(angle,deg);
    QUAN_QUANTITY_LITERAL(reciprocal_time,per_s);
-
+#if 0
    GLfloat 
    modulo_angle( GLfloat const & in)
    {
@@ -57,8 +57,8 @@ namespace {
       }
       return out;
    }
-
-   quan::three_d::vect<GLfloat> display_rotation{0,0,0};
+#endif
+   quan::three_d::quat<double> display_rotation{1,0,0,0};
 
    // drawing
    typedef quan::three_d::vect<GLfloat> quan_vectf;
@@ -119,7 +119,17 @@ namespace {
    /**
       Updated with the rotation matrix to rotate the object.
    */
-   quan::basic_matrix<4,4,float> mR = { 
+   quan::basic_matrix<4,4,float> objectRotation = { 
+      1.0, 0.0, 0.0, 0.0,
+      0.0, 1.0, 0.0, 0.0,
+      0.0, 0.0, 1.0, 0.0,
+      0.0, 0.0, 0.0, 1.0
+   };
+
+   /**
+   * display rotation, updated by keyboard
+   */
+   quan::basic_matrix<4,4,float> displayRotation = { 
       1.0, 0.0, 0.0, 0.0,
       0.0, 1.0, 0.0, 0.0,
       0.0, 0.0, 1.0, 0.0,
@@ -130,13 +140,14 @@ namespace {
 /**
 *  Set Mr matrix above to quaternion rotation.
 *  \param[in] q quaternion to convert to openGL matrix.
+*  \param[out] mR matrix to convert into
 *  \pre rot_quat is a unit quaternion
 */
-void setRotationFrom(quan::three_d::quat<double> const & q)
+void quatToMatrixOpenGL(quan::three_d::quat<double> const & q, quan::basic_matrix<4,4,float> & mR)
 {
-#if 1 
-// dependent or which way matrix is represented
-  // Works in OpenGL
+
+  // Fill matrix dependent or which way matrix is represented
+  // This way works in OpenGL
    mR.at(0,0) = q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z;
       mR.at(1,0) = 2.f * (q.x * q.y - q.w * q.z);
          mR.at(2,0) = 2.f * ( q.x * q.z + q.w * q.y);
@@ -156,28 +167,7 @@ void setRotationFrom(quan::three_d::quat<double> const & q)
       mR.at(1,3) = 0.f;
          mR.at(2,3) = 0.f;
             mR.at(3,3) = 1.f;
-#else
-   // Wrong transpose for OpenGL but may be usefult for other systems
-   mR.at(0,0) = q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z;
-      mR.at(0,1) = 2.f * (q.x * q.y - q.w * q.z);
-         mR.at(0,2) = 2.f * ( q.x * q.z + q.w * q.y);
-            mR.at(0,3) = 0.f;
 
-   mR.at(1,0) = 2.f * (q.x * q.y + q.w * q.z);
-      mR.at(1,1) = q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z;
-         mR.at(1,2) = 2.f * ( q.y * q.z  - q.w * q.x);
-            mR.at(1,3) = 0.f;
-
-   mR.at(2,0) = 2 * ( q.x * q.z - q.w * q.y);
-      mR.at(2,1) = 2 * ( q.y * q.z + q.w * q.x);
-         mR.at(2,2) = q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z;
-            mR.at(1,3) = 0.f;
-
-   mR.at(3,0) = 0.f;
-      mR.at(3,1) = 0.f;
-         mR.at(3,2) = 0.f;
-            mR.at(3,3) = 1.f;
-#endif
 }
 
 void display() {
@@ -188,11 +178,7 @@ void display() {
 
    glLoadIdentity();
 
-   glRotatef(180.f,0,0,1);
-
-   glRotatef(display_rotation.x,1,0,0);
-   glRotatef(display_rotation.y,0,1,0);
-   glRotatef(display_rotation.z,0,0,1);
+   glMultMatrixf(displayRotation.get_array());
 
    glBegin(GL_LINES);
       // rgb --> xyz
@@ -210,7 +196,7 @@ void display() {
 
    glEnd();
 
-   glMultMatrixf(mR.get_array());
+   glMultMatrixf(objectRotation.get_array());
 
    draw_compass();
   
@@ -251,7 +237,7 @@ void onIdle()
             set_acc_sensor(vect_io);
            // quan::three_d::quat<double> rot_quat;
              // find_attitude(rot_quat);
-             // setRotationFrom(rot_quat);
+             // quatToMatrixOpenGL(rot_quat);
              // update = true;
          }
          break;
@@ -259,7 +245,7 @@ void onIdle()
          //gyr sensor
             set_gyr_sensor(vect_io);
             find_attitude(sensor_frame,sensor_frame);
-            setRotationFrom(sensor_frame);
+            quatToMatrixOpenGL(sensor_frame,objectRotation);
             update = true;
          }
          break;
@@ -280,9 +266,6 @@ namespace {
       quan::constant::pi/1 * 1.0_per_s,   // y
       quan::constant::pi/1 * 2.0_per_s    // z
    );
-
-
-
    auto constexpr dt = 0.1_s;
 }
 // for testing
@@ -290,15 +273,14 @@ void onTimer(int value)
 {
    auto const qRt = quatFrom(unit_vector(gyro_vect),magnitude(gyro_vect) * dt);
    sensor_frame = unit_quat(hamilton_product(sensor_frame,conjugate(qRt)));
-   setRotationFrom(sensor_frame);
+   quatToMatrixOpenGL(sensor_frame,objectRotation);
    glutPostRedisplay();
    glutTimerFunc(100U,onTimer,1);
 }
 #endif
 
 namespace {
-  // display rotation increment on key press
-   GLfloat incr = 10;
+   auto constexpr display_key_incr = 5.0_deg;
 }
 
 void onKeyboard(unsigned char key,int x, int y)
@@ -306,31 +288,32 @@ void onKeyboard(unsigned char key,int x, int y)
    bool update = true;
    switch (key ){
       case  'u' : // Up
-         display_rotation.x = modulo_angle(display_rotation.x + incr);
+         display_rotation = unit_quat(hamilton_product(quatFrom(quan::three_d::make_vect(1.0,0.0,0.0),-display_key_incr),display_rotation));
          break;
       case  'd' : // Down
-         display_rotation.x = modulo_angle(display_rotation.x - incr);
+         display_rotation = unit_quat(hamilton_product(quatFrom(quan::three_d::make_vect(1.0,0.0,0.0),+display_key_incr),display_rotation));
          break;
       case  'l' : // yaw left
-         display_rotation.y = modulo_angle(display_rotation.y + incr);
+         display_rotation = unit_quat(hamilton_product(quatFrom(quan::three_d::make_vect(0.0,1.0,0.0),-display_key_incr),display_rotation));
          break;
       case  'r' : // yaw right
-         display_rotation.y = modulo_angle(display_rotation.y - incr);
+         display_rotation = unit_quat(hamilton_product(quatFrom(quan::three_d::make_vect(0.0,1.0,0.0),+display_key_incr),display_rotation));
          break;
       case  'c' : // roll clockwise
-         display_rotation.z = modulo_angle(display_rotation.z - incr);
+         display_rotation = unit_quat(hamilton_product(quatFrom(quan::three_d::make_vect(0.0,0.0,1.0),-display_key_incr),display_rotation));
          break;
       case  'a' : // roll anticlockwise
-         display_rotation.z = modulo_angle(display_rotation.z + incr);
+         display_rotation = unit_quat(hamilton_product(quatFrom(quan::three_d::make_vect(0.0,0.0,1.0),+display_key_incr),display_rotation));
          break;
       case 'q':
-         display_rotation = {0,0,0};
+         display_rotation = quan::three_d::quat<double>{1.0,0.0,0.0,0.0};
          break;
       default:
          update = false;
          break;
    }
    if ( update){
+      quatToMatrixOpenGL(display_rotation,displayRotation);
       glutPostRedisplay();
    }
 }
