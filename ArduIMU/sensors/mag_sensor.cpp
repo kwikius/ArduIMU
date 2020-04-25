@@ -15,7 +15,7 @@ namespace {
    QUAN_QUANTITY_LITERAL(time,ms);
 
    auto prev_read = 0_ms_U;
-   auto mag_update_period = 100_ms_U;
+   auto mag_update_period = 40_ms_U;  // 1/sampleRate
    enum mag_read_state_t {
       idle,
       waiting_for_ready,

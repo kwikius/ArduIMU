@@ -36,9 +36,9 @@ namespace {
       // SMPLRT_DIV = (GyroScopeOutputRate / SampleRate) - 1
       static constexpr bool UsingDLPF = true;
       uint16_t constexpr GyroscopeOutputRate = UsingDLPF ? 1000U : 8000U;
-      uint16_t constexpr SampleRate = 10;
+      uint16_t constexpr SampleRate = 25;  // Hz
       byte constexpr  valSampleRateDiv = (GyroscopeOutputRate / SampleRate) - 1U;
-      static_assert(valSampleRateDiv == 99,"");
+     // static_assert(valSampleRateDiv == 99,"");
    
    byte constexpr regMpuConfig = 26U;
       byte constexpr valDlpfConfig20Hz = 4U; // 20 Hz

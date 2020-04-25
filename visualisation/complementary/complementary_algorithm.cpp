@@ -185,7 +185,7 @@ namespace {
 * \param[in]  quaternion representing current sensor attitude.
 * \param[out] quat_out quaternion representing the resulting attitude.
 */
-void find_gyr_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three_d::quat<double> & quat_out)
+void find_gyr_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three_d::quat<double> & quat_out, quan::time::s & dt_out)
 {
    auto const new_sample_time = timer();
    quan::time::s const dt = new_sample_time - prev_sample_time;
@@ -193,6 +193,7 @@ void find_gyr_attitude(quan::three_d::quat<double> const & sensor_frame, quan::t
    
    auto const qRt = quatFrom(unit_vector(gyr_sensor),magnitude(gyr_sensor) * dt);
    quat_out = unit_quat(hamilton_product(sensor_frame,conjugate(qRt)));
+   dt_out = dt;
 }
 
 /**
@@ -207,9 +208,13 @@ void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three
    find_mag_acc_attitude(qMagAcc);
 
    quan::three_d::quat<double> qGyr;
-   find_gyr_attitude(sensor_frame,qGyr);
+   quan::time::s dt;
+   find_gyr_attitude(sensor_frame,qGyr,dt);
 
    // interpolation coefficient
-   double constexpr k = 0.05;
+   // k = 0.5 * dt/ 1.0_s  
+   // dt = 0.1 -> k= 0.05
+   // dt = 0.05 -> k = 0.025
+   double const k = 1 * dt/ 1.0_s;
    quat_out = slerp(qGyr,qMagAcc,k);
 }
