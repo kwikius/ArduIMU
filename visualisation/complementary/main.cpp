@@ -13,6 +13,8 @@ https://cs.lmu.edu/~ray/notes/openglexamples/
 
 #include <quan/out/reciprocal_time.hpp>
 #include <quan/out/time.hpp>
+#include <quan/out/magnetic_flux_density.hpp>
+#include <quan/out/acceleration.hpp>
 #include <quan/three_d/quat.hpp>
 #include <quan/three_d/out/vect.hpp>
 #include <quan/serial_port.hpp>
@@ -43,21 +45,21 @@ namespace {
    QUAN_QUANTITY_LITERAL(time,s);
    QUAN_QUANTITY_LITERAL(angle,deg);
    QUAN_QUANTITY_LITERAL(reciprocal_time,per_s);
-#if 0
-   GLfloat 
-   modulo_angle( GLfloat const & in)
+
+   // sensor literals
+   QUAN_QUANTITY_LITERAL(magnetic_flux_density,uT);
+   QUAN_QUANTITY_LITERAL(acceleration,m_per_s2);
+
+   typedef quan::reciprocal_time_<
+      quan::angle::deg 
+   >::per_s deg_per_s;
+
+   constexpr inline 
+   deg_per_s operator "" _deg_per_s ( long double v)
    {
-      auto constexpr one_rev = 360.f;
-      auto out = in;
-      while ( out >= one_rev) {
-          out -= one_rev;
-      }
-      while (out < 0.f ){
-         out += one_rev;
-      }
-      return out;
+      return deg_per_s{quan::angle::deg{v}};
    }
-#endif
+
    quan::three_d::quat<double> display_rotation{1,0,0,0};
 
    // drawing
@@ -73,10 +75,11 @@ namespace {
         glColor3f(v.x,v.y,v.z);
    }
 
-   quan_vectf needle_point{ 0.3f,0.f,0.f}; // along x
-   GLfloat constexpr base_x = -0.1f;       // base in yz plane
-   GLfloat constexpr base_size_y = 0.05f;
-   GLfloat constexpr base_size_z = 0.05f;
+   quan_vectf needle_point{ 0.5f,0.f,0.f}; // along x
+   GLfloat constexpr base_x = -0.2f;       // base in yz plane
+   GLfloat constexpr base_size_y = 0.1f;
+   GLfloat constexpr base_size_z = 0.1f;
+
    quan_vectf needle_arrow_base[] = {
       {base_x, base_size_y/2.f,-base_size_z/2.f},
       {base_x, base_size_y/2.f,base_size_z/2.f},
@@ -138,7 +141,7 @@ namespace {
 }
 
 /**
-*  Set Mr matrix above to quaternion rotation.
+*  Set mR matrix above to quaternion rotation.
 *  \param[in] q quaternion to convert to openGL matrix.
 *  \param[out] mR matrix to convert into
 *  \pre rot_quat is a unit quaternion
@@ -209,9 +212,9 @@ namespace {
    quan::serial_port * serial_port = nullptr;
 } // namespace
 
-void set_mag_sensor(quan::three_d::vect<double> const & in);
-void set_acc_sensor(quan::three_d::vect<double> const & in);
-void set_gyr_sensor(quan::three_d::vect<double> const & in);
+void set_mag_sensor(quan::three_d::vect<quan::magnetic_flux_density::uT> const & in);
+void set_acc_sensor(quan::three_d::vect<quan::acceleration::m_per_s2> const & in);
+void set_gyr_sensor(quan::three_d::vect<deg_per_s> const & in);
 
 namespace {
    quan::three_d::quat<double> constexpr sensor_frame_base{1.0,0.0,0.0,0.0};
@@ -229,25 +232,16 @@ void onIdle()
   bool update = false;
   switch (result){
       case 1:
-      // mag_sensor
-         set_mag_sensor(vect_io);
+         set_mag_sensor(vect_io * 1.0_uT); // 
          break;
-      case 2: {
-      // acc_sensor
-            set_acc_sensor(vect_io);
-           // quan::three_d::quat<double> rot_quat;
-             // find_attitude(rot_quat);
-             // quatToMatrixOpenGL(rot_quat);
-             // update = true;
-         }
+      case 2: 
+         set_acc_sensor(vect_io * 1.0_m_per_s2);
          break;
-      case 4:{
-         //gyr sensor
-            set_gyr_sensor(vect_io);
-            find_attitude(sensor_frame,sensor_frame);
-            quatToMatrixOpenGL(sensor_frame,objectRotation);
-            update = true;
-         }
+      case 4:
+         set_gyr_sensor(vect_io * 1.0_deg_per_s);
+         find_attitude(sensor_frame,sensor_frame);
+         quatToMatrixOpenGL(sensor_frame,objectRotation);
+         update = true;
          break;
       default:
          break;
