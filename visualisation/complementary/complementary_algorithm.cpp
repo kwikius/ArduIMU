@@ -69,14 +69,15 @@ namespace {
    quan::three_d::vect<int> mag_sign{1,-1,-1}; // convert to NED
 
    /**
-   * Latest acc senosr reading in m.s-2
+   * Latest acc sensor reading in m.s-2
    */
    quan::three_d::vect<quan::acceleration::m_per_s2>
    acc_sensor = earth_gravity;
 
    quan::three_d::vect<int> acc_sign{-1,1,-1}; // convert to NED
+
    /**
-   *  Latest Gyro sensor reading in degrees per sec
+   *  Latest Gyro sensor reading in radians per sec
    */
    quan::three_d::vect<
       quan::reciprocal_time::per_s
@@ -95,6 +96,9 @@ void NEDtoOpenGL(quan::three_d::vect<T> & in)
    in.y = -in.y;
 }
 
+/**
+*   
+*/
 void set_mag_sensor(quan::three_d::vect<double> const & in)
 {
    // convert from double to uT in NED
@@ -105,6 +109,9 @@ void set_mag_sensor(quan::three_d::vect<double> const & in)
    NEDtoOpenGL(mag_sensor);
 }
 
+/**
+*   
+*/
 void set_acc_sensor(quan::three_d::vect<double> const & in)
 {
    // convert from double to m.s-2 in NED
@@ -115,6 +122,9 @@ void set_acc_sensor(quan::three_d::vect<double> const & in)
    NEDtoOpenGL(acc_sensor);
 }
 
+/**
+*   
+*/
 void set_gyr_sensor(quan::three_d::vect<double> const & in)
 {
    // input is in degrees per sec
@@ -129,6 +139,21 @@ void set_gyr_sensor(quan::three_d::vect<double> const & in)
    // vect of rad_per_s has implicit conversion to per_s
    gyr_sensor = v;
    NEDtoOpenGL(gyr_sensor);
+}
+
+namespace {
+   quan::time::s prev_sample_time = 0.0_s;
+   quan::timer<> timer;
+
+   // required by find_mag_acc_attitude
+   // If the earthe magnetic filed is changed at runtime
+   // This variable should be updated too
+   quan::angle::deg earth_field_z_angle;
+}
+
+void init_algorithm()
+{
+   earth_field_z_angle = quan::atan2(earth_magnetic_field.y,earth_magnetic_field.x);
 }
 
 /**
@@ -158,11 +183,9 @@ void find_mag_acc_attitude( quan::three_d::quat<double> & quat_out)
    // Find angle around z axis from mag1 to earth magnetic field vector.
    // It is important to use the rotation around the z axis, not the 
    // obvious quaternion that will rotate mag1 to earth magnetic field directly.
-   quan::angle::deg const v1_angle = quan::atan2(mag1.y,mag1.x);
-   // TODO do this only when earth magnetic field changes
-   quan::angle::deg const v2_angle = quan::atan2(earth_magnetic_field.y,earth_magnetic_field.x);
+   quan::angle::deg const mag_z_angle = quan::atan2(mag1.y,mag1.x);
 
-   quan::angle::deg const angle = (v2_angle - v1_angle);
+   quan::angle::deg const angle = earth_field_z_angle - mag_z_angle;
 
    // Calculate the quat that rotates mag1 around z axis to earth magntic field vector.
    auto const qmag = quatFrom(quan::three_d::vect<double>{0,0,1},angle);
@@ -172,11 +195,6 @@ void find_mag_acc_attitude( quan::three_d::quat<double> & quat_out)
    quat_out = hamilton_product(qmag,qacc);
 }
 
-namespace {
-   quan::time::s prev_sample_time = 0.0_s;
-   quan::timer<> timer;
-}
-
 /**
 * Estimate sensor board attitude from gyro only.
 *
@@ -184,6 +202,7 @@ namespace {
 * and places new orientation in quat_out.
 * \param[in]  quaternion representing current sensor attitude.
 * \param[out] quat_out quaternion representing the resulting attitude.
+* \param[out] dt_out time-step over which gyro is integrated.
 */
 void find_gyr_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three_d::quat<double> & quat_out, quan::time::s & dt_out)
 {
@@ -192,7 +211,8 @@ void find_gyr_attitude(quan::three_d::quat<double> const & sensor_frame, quan::t
    prev_sample_time = new_sample_time;
    
    auto const qRt = quatFrom(unit_vector(gyr_sensor),magnitude(gyr_sensor) * dt);
-   quat_out = unit_quat(hamilton_product(sensor_frame,conjugate(qRt)));
+
+   quat_out = hamilton_product(sensor_frame,conjugate(qRt));
    dt_out = dt;
 }
 
@@ -213,5 +233,7 @@ void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three
 
    // interpolation coefficient
    double const k = 1 * dt/ 1.0_s;
+   // TODO: Optimisation In slerp, no need to normalise input quaternions
+   // N.B that this is final normalisation point out
    quat_out = slerp(qGyr,qMagAcc,k);
 }

@@ -318,6 +318,9 @@ void onKeyboard(unsigned char key,int x, int y)
    }
 }
 
+// init of sensors etc
+void init_algorithm();
+
 int main(int argc, char** argv) {
 
    serial_port= new quan::serial_port("/dev/ttyUSB0");
@@ -328,6 +331,7 @@ int main(int argc, char** argv) {
       return 1;
    }
    glutInit(&argc, argv);
+   init_algorithm();
 
    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
    glutInitWindowPosition(80, 80);
