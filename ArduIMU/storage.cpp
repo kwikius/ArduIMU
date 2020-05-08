@@ -56,7 +56,7 @@ namespace {
                ] ;
    }
  
-   uint16_t constexpr storageIndexes[] =
+   uint16_t constexpr storageAddress[] =
    {
        llGetStorageAddress<MAG_OFST>(),
        llGetStorageAddress<MAG_GAIN>(),
@@ -70,13 +70,13 @@ namespace {
        llGetStorageAddress<GYR_CALIBRATED>()
    };
 
-   static_assert( sizeof(storageIndexes) / sizeof(uint16_t) == static_cast<int>(STORAGE_ID_END),"" );
+   static_assert( sizeof(storageAddress) / sizeof(uint16_t) == static_cast<int>(STORAGE_ID_END),"" );
 
 } // namespace
 
 uint16_t getStorageAddress(storageID in)
 {
-   return storageIndexes[static_cast<uint16_t>(in)];
+   return storageAddress[static_cast<uint16_t>(in)];
 }
 
 bool readFromStorage(uint16_t storageAddress, uint8_t* runtimeAddress, uint16_t numBytes)
