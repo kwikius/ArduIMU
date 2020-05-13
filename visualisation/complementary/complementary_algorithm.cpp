@@ -80,8 +80,8 @@ namespace {
    *  Latest Gyro sensor reading in radians per sec
    */
    quan::three_d::vect<
-      quan::reciprocal_time::per_s
-   > gyr_sensor{0.0_per_s,0.0_per_s,0.0_per_s};
+      rad_per_s
+   > gyr_sensor{0.0_rad_per_s,0.0_rad_per_s,0.0_rad_per_s};
 
    quan::three_d::vect<int> gyr_sign{-1,1,-1}; // convert to NED
 }
@@ -125,10 +125,9 @@ void set_acc_sensor(quan::three_d::vect<quan::acceleration::m_per_s2> const & in
 */
 void set_gyr_sensor(quan::three_d::vect<deg_per_s> const & in)
 {
-   //N.B implicit conversion to real from rad_per_s
-   gyr_sensor.x = rad_per_s{in.x * gyr_sign.x} ;
-   gyr_sensor.y = rad_per_s{in.y * gyr_sign.y} ;
-   gyr_sensor.z = rad_per_s{in.z * gyr_sign.z} ;
+   gyr_sensor.x = in.x * gyr_sign.x;
+   gyr_sensor.y = in.y * gyr_sign.y;
+   gyr_sensor.z = in.z * gyr_sign.z;
 
    NEDtoOpenGL(gyr_sensor);
 }
