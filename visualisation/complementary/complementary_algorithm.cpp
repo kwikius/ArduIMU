@@ -193,9 +193,13 @@ void find_mag_acc_attitude( quan::three_d::quat<double> & qSensorFrameOut)
 * and places new orientation in qSensorFrameOut.
 * \param[in]  quaternion representing current sensor attitude.
 * \param[out] qSensorFrameOut quaternion representing the resulting attitude.
-* \param[out] dt_out time-step over which gyro is integrated.
+* \param[in] dt time-step over which gyro is integrated.
 */
-void find_gyr_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three_d::quat<double> & qSensorFrameOut, quan::time::s const & dt)
+void find_gyr_attitude(
+   quan::three_d::quat<double> const & sensor_frame, 
+   quan::three_d::quat<double> & qSensorFrameOut, 
+   quan::time::s const & dt
+)
 {
    auto const qRt = quatFrom(unit_vector(gyr_sensor),magnitude(gyr_sensor) * dt);
    qSensorFrameOut = hamilton_product(sensor_frame,conjugate(qRt));
