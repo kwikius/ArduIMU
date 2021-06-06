@@ -1,3 +1,5 @@
+
+
 /*
   copyright (C) 2019 - 2021 Andy Little
 
@@ -20,12 +22,12 @@ namespace {
 
    QUAN_QUANTITY_LITERAL(angle,deg);
 
-   quan::three_d::vect<float> mag_vector= {1,0,0};
+   quan::three_d::vect<float> acc_vector= {1,0,0};
 
-   quan::three_d::vect<int> constexpr mag_vector_sign = {
+   quan::three_d::vect<int> constexpr acc_vector_sign = {
       1,
-      -1,
-      -1
+      1,
+      1
    };
 
    quan_vectf sign_adjust ( quan_vectf const & v, quan::three_d::vect<int> const & sign)
@@ -37,11 +39,11 @@ namespace {
       };
    }
 
-   void draw_compass()
+   void draw_acc_vector()
    {
-      if ( magnitude( mag_vector) > 0.01){
+      if ( magnitude( acc_vector) > 0.01){
          draw_arrow(
-            sign_adjust(mag_vector,mag_vector_sign), //fix up signs of input as required
+            sign_adjust(acc_vector,acc_vector_sign), //fix up signs of input as required
             0.5f,    //arrow length
             colours::yellow, //foreground
             (colours::red + colours::yellow )/2  //background 
@@ -65,7 +67,7 @@ void display() {
 
 void onIdle()
 {
-   if ( parse_sp(get_serial_port(), mag_vector) == 1 ){
+   if ( parse_sp(get_serial_port(), mag_vector) == 2 ){
       glutPostRedisplay();
    }
 }

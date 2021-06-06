@@ -5,14 +5,14 @@
 #include <quan/serial_port.hpp>
 
 namespace {
-   typedef quan::three_d::vect<double> vect;
+   typedef quan::three_d::vect<float> vect;
    std::string sp_input_string;
 
    /** sp_input_string may contains <sensor> x y z value
    * /param[out] out The vector to parse the value to 
    * \return 1 for mag 2 for acc 4 for gyro or 0 for nothing to out
    */
-   int parse_string( quan::three_d::vect<double> & out)
+   int parse_string( quan::three_d::vect<float> & out)
    {
       std::istringstream istr(sp_input_string);
       std::string id;
@@ -40,7 +40,7 @@ namespace {
 * \param[out] out vector to put the result of parse packet
 * \return 1 for mag 2 for acc 4 for gyro and result put to out, 0 for anything else (e.g middle of packet)
 */
-int parse_sp(quan::serial_port& sp, quan::three_d::vect<double> & out)
+int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out)
 {
    while ( sp.in_avail() ){
       unsigned char ch;
