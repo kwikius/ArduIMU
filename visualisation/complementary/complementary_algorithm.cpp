@@ -213,9 +213,9 @@ void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three
    qSensorFrameOut = slerp(qGyr,qMagAcc,k);
 #else
    // ... take account of any difference in size between acc sensor and gravity vectors
-   double constexpr kGain = 3.0; // larger value of kGain increases total weight of qMagAcc
+   double constexpr kGain = 6.0; // larger value of kGain increases total weight of qMagAcc
    double const k = kGain * dt/ 1.0_s; 
-   double constexpr kAccError = 3.0; //Increasing kAccError reduces the accelerometer contribution, 
+   double constexpr kAccError = 6.0; //Increasing kAccError reduces the accelerometer contribution, 
                                       // the more it differs from gravity vector magnitude
    auto constexpr G2 = quan::pow<2>(quan::acceleration::g);
    auto const  k2 = G2/ ( G2 + kAccError * quan::pow<2>( magnitude(acc_sensor) - quan::acceleration::g));
