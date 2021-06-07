@@ -13,6 +13,7 @@ originally derived from
 #include <quan/three_d/rotation.hpp>
 #include <quan/three_d/rotation_from.hpp>
 #include <quan/three_d/quatToMatrixOpenGL.hpp>
+#include <quan/three_d/sign_adjust.hpp>
 #include <quanGL.hpp>
 #include <serial_port.hpp>
 
@@ -21,23 +22,6 @@ int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
 namespace {
 
    QUAN_QUANTITY_LITERAL(acceleration,m_per_s2);
-
-   quan::three_d::vect<float> raw_acc_vector = {1,0,0};
-
-   quan::three_d::vect<int> constexpr raw_acc_vector_sign = {
-      -1,
-      1,
-      -1
-   };
-
-   quan_vectf sign_adjust ( quan_vectf const & v, quan::three_d::vect<int> const & sign)
-   {
-      return { 
-         v.x * sign.x,
-         v.y * sign.y,
-         v.z * sign.z
-      };
-   }
 
    quan::three_d::vect<quan::acceleration::m_per_s2>
    constexpr earth_gravity{0.0_m_per_s2,0.0_m_per_s2,-quan::acceleration::g};
@@ -49,7 +33,7 @@ namespace {
       float const length = magnitude(acc_vector)/ magnitude(earth_gravity);
       if ( length > 0.01){
          draw_arrow(
-            sign_adjust(raw_acc_vector,raw_acc_vector_sign), //fix up signs of input as required
+            unit_vector(acc_vector), 
             length,    //arrow length
             colours::yellow, //foreground
             (colours::red + colours::yellow )/2  //background 
@@ -71,10 +55,21 @@ void display() {
    glutSwapBuffers();
 }
 
+namespace{
+
+// fix up sign of data coming from sensor 
+   quan::three_d::vect<int> constexpr acc_vector_sign = {
+      -1,
+      1,
+      -1
+   };
+}
+
 void onIdle()
 {
+   quan::three_d::vect<float> raw_acc_vector;
    if ( parse_sp(get_serial_port(), raw_acc_vector) == 2 ){
-      acc_vector = raw_acc_vector * 1_m_per_s2;
+      acc_vector = sign_adjust(raw_acc_vector,acc_vector_sign) * 1_m_per_s2;
       glutPostRedisplay();
    }
 }
