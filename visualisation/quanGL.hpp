@@ -35,12 +35,19 @@ void draw_arrow( quan_vectf const & v, GLfloat length, quan_vectf fg, quan_vectf
 void draw_grid();
 void draw_axes();
 
-//quan_vectf get_display_rotation();
-
 void rotate_display();
 
 void onKeyboard(unsigned char key,int x, int y);
 
 void reshape(GLint w, GLint h);
+
+// do any init of sensors etc here
+void init_algorithm();
+
+// display app title in window frame
+const char* get_title();
+
+void display() ;
+void onIdle();
 
 #endif // QUANGL_HPP_INCLUDED

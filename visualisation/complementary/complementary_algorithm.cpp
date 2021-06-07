@@ -14,6 +14,7 @@
 #include <quan/out/time.hpp>
 #include <quan/utility/timer.hpp>
 #include <quan/three_d/slerp.hpp>
+#include <quan/three_d/sign_adjust.hpp>
 
 namespace {
 
@@ -93,7 +94,7 @@ namespace {
 template <typename T>
 void NEDtoOpenGL(quan::three_d::vect<T> & in)
 {
-   in.y = -in.y;
+  /// in.y = -in.y;
 }
 
 /**
@@ -101,10 +102,7 @@ void NEDtoOpenGL(quan::three_d::vect<T> & in)
 */
 void set_mag_sensor(quan::three_d::vect<quan::magnetic_flux_density::uT> const & in)
 {
-   mag_sensor.x = in.x * mag_sign.x;
-   mag_sensor.y = in.y * mag_sign.y;
-   mag_sensor.z = in.z * mag_sign.z;
-
+   mag_sensor = sign_adjust(in,mag_sign);
    NEDtoOpenGL(mag_sensor);
 }
 
@@ -113,10 +111,7 @@ void set_mag_sensor(quan::three_d::vect<quan::magnetic_flux_density::uT> const &
 */
 void set_acc_sensor(quan::three_d::vect<quan::acceleration::m_per_s2> const & in)
 {
-   acc_sensor.x = in.x * acc_sign.x;
-   acc_sensor.y = in.y * acc_sign.y;
-   acc_sensor.z = in.z * acc_sign.z;
-
+   acc_sensor = sign_adjust(in,acc_sign);
    NEDtoOpenGL(acc_sensor);
 }
 
@@ -125,10 +120,7 @@ void set_acc_sensor(quan::three_d::vect<quan::acceleration::m_per_s2> const & in
 */
 void set_gyr_sensor(quan::three_d::vect<deg_per_s> const & in)
 {
-   gyr_sensor.x = in.x * gyr_sign.x;
-   gyr_sensor.y = in.y * gyr_sign.y;
-   gyr_sensor.z = in.z * gyr_sign.z;
-
+   gyr_sensor = sign_adjust(in,gyr_sign);
    NEDtoOpenGL(gyr_sensor);
 }
 
@@ -202,7 +194,7 @@ void find_gyr_attitude(
 )
 {
    auto const qRt = quatFrom(unit_vector(gyr_sensor),magnitude(gyr_sensor) * dt);
-   qSensorFrameOut = hamilton_product(sensor_frame,conjugate(qRt));
+   qSensorFrameOut = hamilton_product(sensor_frame,qRt);
 }
 
 /**
@@ -229,7 +221,7 @@ void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three
    // Calculate interpolation coefficient for how much weight to give each variable...
 #if 0
    // Use simple constant or...
-   double const k = 1 * dt/ 1.0_s;
+   double const k =  1 * dt/ 1.0_s;
    qSensorFrameOut = slerp(qGyr,qMagAcc,k);
 #else
    // ... take account of any difference in size between acc sensor and gravity vectors
