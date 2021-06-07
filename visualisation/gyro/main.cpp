@@ -22,6 +22,11 @@ originally derived from
 
 int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
 
+const char* get_title() {return "Display 3D gyro input from serial port";}
+
+// nothing to do
+void  init_algorithm(){}
+
 namespace {
 
    QUAN_QUANTITY_LITERAL(angle,rad);
@@ -64,7 +69,7 @@ namespace {
       quan::angle::rad const delta = magnitude(gyro_vector) * dt;
       if ( delta > 0.01_deg){
          auto const qRt = unit_quat(quatFrom(unit_vector(gyro_vector),delta));
-         model_pose = unit_quat(hamilton_product(model_pose,conjugate(qRt)));
+         model_pose = unit_quat(hamilton_product(model_pose,qRt));
       }
       quan::basic_matrix<4,4,float> mRt = { 
          1.0, 0.0, 0.0, 0.0,
@@ -87,7 +92,6 @@ void display() {
    glLoadIdentity();
    rotate_display();
    draw_grid();
- //  draw_axes();
    draw_gyro_vector();
    glFlush();
    glutSwapBuffers();
@@ -96,7 +100,7 @@ void display() {
 namespace{
 
 // fix up sign of data coming from sensor 
-#if 0
+#if 1
    //model
    quan::three_d::vect<int> constexpr gyro_vector_sign = {
       -1,
@@ -131,29 +135,3 @@ void onIdle()
    }
 }
 
-int main(int argc, char** argv) {
-
-   if ( open_serial_port()){
-
-      glutInit(&argc, argv);
-
-      glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-      glutInitWindowPosition(80, 80);
-      glutInitWindowSize(800, 500);
-      glutCreateWindow("Display 3D gyro input from serial port");
-      glutReshapeFunc(reshape);
-      glutDisplayFunc(display);
-      glutKeyboardFunc(onKeyboard);
-      glutIdleFunc(onIdle);
-
-      glEnable(GL_CULL_FACE);
-      glEnable(GL_DEPTH_TEST);
-      glDepthMask(GL_TRUE);
-      glDepthFunc(GL_LESS);    /* pedantic, GL_LESS is the default */
-      glutMainLoop();
-      close_serial_port();
-
-   } else{
-      return 1;
-   }
-}

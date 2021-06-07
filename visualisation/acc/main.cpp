@@ -7,6 +7,7 @@ originally derived from
 
   https://cs.lmu.edu/~ray/notes/openglexamples/
 */
+
 #include <quan/acceleration.hpp>
 #include <quan/three_d/vect.hpp>
 #include <quan/angle.hpp>
@@ -18,6 +19,10 @@ originally derived from
 #include <serial_port.hpp>
 
 int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
+
+const char * get_title(){ return "Display 3D acc input from serial port";}
+// nothing to do
+void  init_algorithm(){}
 
 namespace {
 
@@ -42,7 +47,8 @@ namespace {
    }
 }
 
-void display() {
+void display() 
+{
    
    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
    glMatrixMode(GL_MODELVIEW);
@@ -71,32 +77,5 @@ void onIdle()
    if ( parse_sp(get_serial_port(), raw_acc_vector) == 2 ){
       acc_vector = sign_adjust(raw_acc_vector,acc_vector_sign) * 1_m_per_s2;
       glutPostRedisplay();
-   }
-}
-
-int main(int argc, char** argv) {
-
-   if ( open_serial_port()){
-
-      glutInit(&argc, argv);
-
-      glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-      glutInitWindowPosition(80, 80);
-      glutInitWindowSize(800, 500);
-      glutCreateWindow("Display 3D acc input from serial port");
-      glutReshapeFunc(reshape);
-      glutDisplayFunc(display);
-      glutKeyboardFunc(onKeyboard);
-      glutIdleFunc(onIdle);
-
-      glEnable(GL_CULL_FACE);
-      glEnable(GL_DEPTH_TEST);
-      glDepthMask(GL_TRUE);
-      glDepthFunc(GL_LESS);    /* pedantic, GL_LESS is the default */
-      glutMainLoop();
-      close_serial_port();
-
-   } else{
-      return 1;
    }
 }

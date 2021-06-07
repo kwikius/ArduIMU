@@ -16,6 +16,10 @@ originally derived from
 
 int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
 
+const char* get_title() {return "Display 3D mag input from serial port";}
+// nothing to do
+void  init_algorithm(){}
+
 namespace {
 
    QUAN_QUANTITY_LITERAL(angle,deg);
@@ -70,29 +74,3 @@ void onIdle()
    }
 }
 
-int main(int argc, char** argv) {
-
-   if ( open_serial_port()){
-
-      glutInit(&argc, argv);
-
-      glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
-      glutInitWindowPosition(80, 80);
-      glutInitWindowSize(800, 500);
-      glutCreateWindow("Display 3D mag input from serial port");
-      glutReshapeFunc(reshape);
-      glutDisplayFunc(display);
-      glutKeyboardFunc(onKeyboard);
-      glutIdleFunc(onIdle);
-
-      glEnable(GL_CULL_FACE);
-      glEnable(GL_DEPTH_TEST);
-      glDepthMask(GL_TRUE);
-      glDepthFunc(GL_LESS);    /* pedantic, GL_LESS is the default */
-      glutMainLoop();
-      close_serial_port();
-
-   } else{
-      return 1;
-   }
-}

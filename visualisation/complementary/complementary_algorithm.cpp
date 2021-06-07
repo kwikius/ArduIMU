@@ -87,15 +87,6 @@ namespace {
    quan::three_d::vect<int> gyr_sign{-1,1,-1}; // convert to NED
 }
 
-/**   convert North East Down to work in OpenGL
-*     TODO: Probably should do later to keep transform?
-*     so this is display specific
-*/
-template <typename T>
-void NEDtoOpenGL(quan::three_d::vect<T> & in)
-{
-  /// in.y = -in.y;
-}
 
 /**
 *   
@@ -103,7 +94,6 @@ void NEDtoOpenGL(quan::three_d::vect<T> & in)
 void set_mag_sensor(quan::three_d::vect<quan::magnetic_flux_density::uT> const & in)
 {
    mag_sensor = sign_adjust(in,mag_sign);
-   NEDtoOpenGL(mag_sensor);
 }
 
 /**
@@ -112,7 +102,6 @@ void set_mag_sensor(quan::three_d::vect<quan::magnetic_flux_density::uT> const &
 void set_acc_sensor(quan::three_d::vect<quan::acceleration::m_per_s2> const & in)
 {
    acc_sensor = sign_adjust(in,acc_sign);
-   NEDtoOpenGL(acc_sensor);
 }
 
 /**
@@ -121,7 +110,6 @@ void set_acc_sensor(quan::three_d::vect<quan::acceleration::m_per_s2> const & in
 void set_gyr_sensor(quan::three_d::vect<deg_per_s> const & in)
 {
    gyr_sensor = sign_adjust(in,gyr_sign);
-   NEDtoOpenGL(gyr_sensor);
 }
 
 namespace {
