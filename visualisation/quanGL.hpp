@@ -9,7 +9,6 @@
 
 #include <quan/three_d/vect.hpp>
 
-
 typedef quan::three_d::vect<GLfloat> quan_vectf;
 
 struct colours{

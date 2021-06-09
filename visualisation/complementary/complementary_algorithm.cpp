@@ -50,24 +50,31 @@ namespace {
    /** earth magnetic field density vector at my loc
    * https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml#igrfwmm
    * NED_ELTF (North East Down Earth Local Tangent Frame)
-   * eventually not const so can be modified
+   * eventually not const so can be found at startup
+   * wget https://www.ngdc.noaa.gov/geomag-web/calculators/calculateIgrfwmm?lat1=40&lon1=-105.25&resultFormat=json 
+   * vector points in direction of north pole
    */
    quan::three_d::vect<quan::magnetic_flux_density::uT> 
    constexpr earth_magnetic_field{19321.4_nT,11.7_nT,45017.5_nT};
 
    /** Gravity vector NED_ELTF 
    * assume it is a proper constant
+   * eventually could work out according to altitude
+   * Gravity attempts to accelerate us down, but since earth supports us
+   * so we feel a force pushing us up, so the acceleration is negative in NED ELTF
    */
    quan::three_d::vect<quan::acceleration::m_per_s2>
    constexpr earth_gravity{0.0_m_per_s2,0.0_m_per_s2,-quan::acceleration::g};
 
+
    /** 
-   * Latest mag sensor reading in uT
+   * Latest mag sensor reading in uT. Body frame. At startup assume body frame is aligned with earth frame
+   * 
    */
    quan::three_d::vect<quan::magnetic_flux_density::uT> 
    mag_sensor = earth_magnetic_field;
 
-   quan::three_d::vect<int> mag_sign{1,-1,-1}; // convert to NED
+   quan::three_d::vect<int> mag_sign{1,-1,-1}; // convert to NED from mag sensor input
 
    /**
    * Latest acc sensor reading in m.s-2
@@ -75,7 +82,7 @@ namespace {
    quan::three_d::vect<quan::acceleration::m_per_s2>
    acc_sensor = earth_gravity;
 
-   quan::three_d::vect<int> acc_sign{-1,1,-1}; // convert to NED
+   quan::three_d::vect<int> acc_sign{-1,1,-1}; // convert to NED from acc sensor input
 
    /**
    *  Latest Gyro sensor reading in radians per sec
@@ -84,9 +91,8 @@ namespace {
       rad_per_s
    > gyr_sensor{0.0_rad_per_s,0.0_rad_per_s,0.0_rad_per_s};
 
-   quan::three_d::vect<int> gyr_sign{-1,1,-1}; // convert to NED
+   quan::three_d::vect<int> gyr_sign{-1,1,-1}; // convert to NED from gyro sensor input
 }
-
 
 /**
 *   
