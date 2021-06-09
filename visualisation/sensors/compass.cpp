@@ -1,6 +1,7 @@
 
 #include "compass.hpp"
 #include <quan/three_d/sign_adjust.hpp>
+#include <quan/fixed_quantity/operations/atan2.hpp>
 
 namespace {
 
@@ -15,7 +16,11 @@ namespace {
    * vector points in direction of north pole
    **/
    quan::three_d::vect<quan::magnetic_flux_density::uT> 
-   constexpr earth_magnetic_field{19321.4_nT,11.7_nT,45017.5_nT};
+   earth_magnetic_field{19321.4_nT,11.7_nT,45017.5_nT};
+
+
+   quan::angle::deg earth_field_z_angle 
+      = quan::atan2(earth_magnetic_field.y,earth_magnetic_field.x);
 
    /**
     * TODO check if the size is a lot different to earth magnetic field, 
@@ -50,4 +55,9 @@ get_compass_sensor()
 void set_compass_sensor( quan::three_d::vect<quan::magnetic_flux_density::uT> const & v)
 {
    mag_vector = sign_adjust(v,mag_vector_sign);
+}
+
+quan::angle::deg get_earth_field_z_angle()
+{
+    return earth_field_z_angle;
 }

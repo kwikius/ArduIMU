@@ -74,6 +74,21 @@ void rotate_display()
    glRotatef(display_rotation.z,0,0,1);
 }
 
+void display() 
+{
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+   glMatrixMode(GL_MODELVIEW);
+   glLoadIdentity();
+   rotate_display();
+
+   displayModel();
+
+   glFlush();
+   glutSwapBuffers();
+}
+
+
+
 void reshape(GLint w, GLint h) 
 {
    glViewport(0, 0, w, h);

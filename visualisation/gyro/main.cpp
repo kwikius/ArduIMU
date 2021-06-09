@@ -3,27 +3,20 @@
   copyright (C) 2019 - 2021 Andy Little
 */
 
-#include <sensors/gyroscope.hpp>
-#include <quan/three_d/out/quat.hpp>
-
+#include <quan/three_d/quat.hpp>
 #include <quan/three_d/quatToMatrixOpenGL.hpp>
-
 #include <quan/utility/timer.hpp>
 #include <quanGL.hpp>
 #include <serial_port.hpp>
-
-int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
+#include <sensors/gyroscope.hpp>
 
 const char* get_title() {return "Display 3D gyro input from serial port";}
-
-// nothing to do
-void  init_algorithm(){}
 
 namespace {
 
    using deg_per_s = quan::reciprocal_time_<
-        quan::angle::deg 
-      >::per_s ;
+     quan::angle::deg 
+   >::per_s ;
 
    constexpr inline 
    deg_per_s operator "" _deg_per_s ( long double v)
@@ -59,16 +52,10 @@ namespace {
    }
 }
 
-void display() {
-   
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-   glMatrixMode(GL_MODELVIEW);
-   glLoadIdentity();
-   rotate_display();
+void displayModel() 
+{
    draw_grid();
    draw_gyro_vector();
-   glFlush();
-   glutSwapBuffers();
 }
 
 namespace{

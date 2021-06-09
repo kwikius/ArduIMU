@@ -1,32 +1,19 @@
 /*
   copyright (C) 2019 - 2021 Andy Little
-
-originally derived from
-
-  https://cs.lmu.edu/~ray/notes/openglexamples/
 */
 
-#include <sensors/compass.hpp>
-#include <quan/three_d/rotation.hpp>
-#include <quan/three_d/rotation_from.hpp>
-#include <quan/three_d/sign_adjust.hpp>
-#include <quan/three_d/quatToMatrixOpenGL.hpp>
 #include <quanGL.hpp>
 #include <serial_port.hpp>
-
-int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
+#include <sensors/compass.hpp>
 
 const char* get_title() {return "Display 3D mag input from serial port";}
-
-// nothing to do
-void  init_algorithm(){}
 
 namespace {
 
    QUAN_QUANTITY_LITERAL(magnetic_flux_density,uT);
 
     //arrow length scaled to some standard size for display
-   // used to visually compare sensor magnitude with earth magnetic fieed magnitude
+   // to visually compare sensor magnitude with earth field magnitude
    constexpr float earth_mag_field_display_length = 0.5f;
 
    void draw_earth_magnetic_field()
@@ -61,20 +48,12 @@ namespace {
    }
 } //namespace
 
-void display() {
-  
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-   glMatrixMode(GL_MODELVIEW);
-
-   glLoadIdentity();
-   rotate_display();
+void displayModel() 
+{
    draw_grid();
    draw_axes();
    draw_earth_magnetic_field();
    draw_compass();
-   glFlush();
-   glutSwapBuffers();
 }
 
 void onIdle()

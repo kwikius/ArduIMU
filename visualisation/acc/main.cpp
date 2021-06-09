@@ -3,15 +3,12 @@
 /*
   copyright (C) 2019 - 2021 Andy Little
 */
-#include <quanGL.hpp>
-#include <sensors/accelerometer.hpp>
-#include <serial_port.hpp>
 
-int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
+#include <quanGL.hpp>
+#include <serial_port.hpp>
+#include <sensors/accelerometer.hpp>
 
 const char * get_title(){ return "Display 3D acc input from serial port";}
-// nothing to do
-void  init_algorithm(){}
 
 namespace {
 
@@ -33,24 +30,18 @@ namespace {
    }
 }
 
-void display() 
+void displayModel() 
 {
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-   glMatrixMode(GL_MODELVIEW);
-   glLoadIdentity();
-   rotate_display();
    draw_grid();
    draw_axes();
    draw_acc_vector();
-   glFlush();
-   glutSwapBuffers();
 }
 
 void onIdle()
 {
-   quan::three_d::vect<float> raw_acc_vector;
-   if ( parse_sp(get_serial_port(), raw_acc_vector) == 2 ){
-      set_accelerometer(raw_acc_vector * 1_m_per_s2);
+   quan::three_d::vect<float> raw_sensor_vector;
+   if ( parse_sp(get_serial_port(), raw_sensor_vector) == 2 ){
+      set_accelerometer(raw_sensor_vector * 1_m_per_s2);
       glutPostRedisplay();
    }
 }

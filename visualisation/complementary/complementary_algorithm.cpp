@@ -1,20 +1,14 @@
 
-#include <quan/two_d/out/vect.hpp>
-#include <quan/three_d/out/vect.hpp>
-#include <quan/three_d/make_vect.hpp>
-#include <quan/two_d/make_vect.hpp>
-#include <quan/three_d/rotation.hpp>
+
+#include <sensors/compass.hpp>
+#include <sensors/accelerometer.hpp>
+#include <sensors/gyroscope.hpp>
+#include <quan/fixed_quantity/operations/atan2.hpp>
 #include <quan/three_d/rotation_from.hpp>
-#include <quan/out/angle.hpp>
-#include <quan/three_d/out/quat.hpp>
-#include <quan/out/magnetic_flux_density.hpp>
-#include <quan/out/acceleration.hpp>
-#include <quan/out/angle.hpp>
-#include <quan/out/reciprocal_time.hpp>
+#include <quan/three_d/quat.hpp>
 #include <quan/out/time.hpp>
 #include <quan/utility/timer.hpp>
 #include <quan/three_d/slerp.hpp>
-#include <quan/three_d/sign_adjust.hpp>
 
 namespace {
 
@@ -47,91 +41,11 @@ namespace {
       return rad_per_s{quan::angle::rad{v}};
    }
 
-   /** earth magnetic field density vector at my loc
-   * https://www.ngdc.noaa.gov/geomag/calculators/magcalc.shtml#igrfwmm
-   * NED_ELTF (North East Down Earth Local Tangent Frame)
-   * eventually not const so can be found at startup
-   * wget https://www.ngdc.noaa.gov/geomag-web/calculators/calculateIgrfwmm?lat1=40&lon1=-105.25&resultFormat=json 
-   * vector points in direction of north pole
-   */
-   quan::three_d::vect<quan::magnetic_flux_density::uT> 
-   constexpr earth_magnetic_field{19321.4_nT,11.7_nT,45017.5_nT};
-
-   /** Gravity vector NED_ELTF 
-   * assume it is a proper constant
-   * eventually could work out according to altitude
-   * Gravity attempts to accelerate us down, but since earth supports us
-   * so we feel a force pushing us up, so the acceleration is negative in NED ELTF
-   */
-   quan::three_d::vect<quan::acceleration::m_per_s2>
-   constexpr earth_gravity{0.0_m_per_s2,0.0_m_per_s2,-quan::acceleration::g};
-
-
-   /** 
-   * Latest mag sensor reading in uT. Body frame. At startup assume body frame is aligned with earth frame
-   * 
-   */
-   quan::three_d::vect<quan::magnetic_flux_density::uT> 
-   mag_sensor = earth_magnetic_field;
-
-   quan::three_d::vect<int> mag_sign{1,-1,-1}; // convert to NED from mag sensor input
-
-   /**
-   * Latest acc sensor reading in m.s-2
-   */
-   quan::three_d::vect<quan::acceleration::m_per_s2>
-   acc_sensor = earth_gravity;
-
-   quan::three_d::vect<int> acc_sign{-1,1,-1}; // convert to NED from acc sensor input
-
-   /**
-   *  Latest Gyro sensor reading in radians per sec
-   */
-   quan::three_d::vect<
-      rad_per_s
-   > gyr_sensor{0.0_rad_per_s,0.0_rad_per_s,0.0_rad_per_s};
-
-   quan::three_d::vect<int> gyr_sign{-1,1,-1}; // convert to NED from gyro sensor input
-}
-
-/**
-*   
-*/
-void set_mag_sensor(quan::three_d::vect<quan::magnetic_flux_density::uT> const & in)
-{
-   mag_sensor = sign_adjust(in,mag_sign);
-}
-
-/**
-*   
-*/
-void set_acc_sensor(quan::three_d::vect<quan::acceleration::m_per_s2> const & in)
-{
-   acc_sensor = sign_adjust(in,acc_sign);
-}
-
-/**
-*   
-*/
-void set_gyr_sensor(quan::three_d::vect<deg_per_s> const & in)
-{
-   gyr_sensor = sign_adjust(in,gyr_sign);
-}
-
-namespace {
    quan::time::s prev_sample_time = 0.0_s;
    quan::timer<> timer;
-
-   // required by find_mag_acc_attitude
-   // If the earthe magnetic filed is changed at runtime
-   // This variable should be updated too
-   quan::angle::deg earth_field_z_angle;
 }
 
-void init_algorithm()
-{
-   earth_field_z_angle = quan::atan2(earth_magnetic_field.y,earth_magnetic_field.x);
-}
+void init_algorithm(){}
 
 /**
 * Estimate sensor board attitude from latest accelerometer and magnetometer readings.
@@ -149,11 +63,11 @@ void find_mag_acc_attitude( quan::three_d::quat<double> & qSensorFrameOut)
    // accelerometer and the earth gravity vector.
    // Rotation using qacc means that the z component is correct, but 
    // We cannot tell the xy orientation from this
-   auto const qacc = rotation_from(acc_sensor,earth_gravity);
+   auto const qacc = rotation_from(get_accelerometer(),get_gravity_vector());
 
-   // Calculate mag1 the mag_sensor rotated to the earth frame in z direction.
+   // Calculate mag1, the mag_sensor rotated to the earth frame in z direction.
    // mag1 will be correct in a vertical dircetion, but we dont yet know orientation around gravity z axis.
-   auto const mag1 = qacc * mag_sensor;
+   auto const mag1 = qacc * get_compass_sensor();
 
    // the z component of mag1 is same as earth magnetic field if 
    // mag1 is orientated correctly in vertical direction.
@@ -162,9 +76,9 @@ void find_mag_acc_attitude( quan::three_d::quat<double> & qSensorFrameOut)
    // obvious quaternion that will rotate mag1 to earth magnetic field directly.
    quan::angle::deg const mag_z_angle = quan::atan2(mag1.y,mag1.x);
 
-   quan::angle::deg const z_angle = earth_field_z_angle - mag_z_angle;
+   quan::angle::deg const z_angle = get_earth_field_z_angle() - mag_z_angle;
 
-   // Calculate the quat that rotates mag1 around z axis to earth magntic field vector.
+   // Calculate the quat that rotates mag1 around z axis to earth magnetic field vector.
    auto const qmag = quatFrom(quan::three_d::vect<double>{0,0,1},z_angle);
 
    // Combine the two rotation quaternions (in correct order) to give one rotation
@@ -187,8 +101,14 @@ void find_gyr_attitude(
    quan::time::s const & dt
 )
 {
-   auto const qRt = quatFrom(unit_vector(gyr_sensor),magnitude(gyr_sensor) * dt);
-   qSensorFrameOut = hamilton_product(sensor_frame,qRt);
+   auto const & gyro = get_gyroscope();
+   auto const gyro_angle = magnitude(gyro) * dt;
+   if ( gyro_angle > 0.01_deg){
+      auto const qRt = quatFrom(unit_vector(gyro),gyro_angle);
+      qSensorFrameOut = hamilton_product(sensor_frame,qRt);
+   }else{
+     qSensorFrameOut = sensor_frame;
+   }
 }
 
 /**
@@ -212,20 +132,14 @@ void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three
    quan::three_d::quat<double> qGyr;
    find_gyr_attitude(sensor_frame,qGyr,dt);
 
-   // Calculate interpolation coefficient for how much weight to give each variable...
-#if 0
-   // Use simple constant or...
-   double const k =  1 * dt/ 1.0_s;
-   qSensorFrameOut = slerp(qGyr,qMagAcc,k);
-#else
    // ... take account of any difference in size between acc sensor and gravity vectors
-   double constexpr kGain = 6.0; // larger value of kGain increases total weight of qMagAcc
+   double constexpr kGain = 3.0; // larger value of kGain increases total weight of qMagAcc
    double const k = kGain * dt/ 1.0_s; 
    double constexpr kAccError = 6.0; //Increasing kAccError reduces the accelerometer contribution, 
                                       // the more it differs from gravity vector magnitude
    auto constexpr G2 = quan::pow<2>(quan::acceleration::g);
-   auto const  k2 = G2/ ( G2 + kAccError * quan::pow<2>( magnitude(acc_sensor) - quan::acceleration::g));
+   auto const  k2 = G2/ ( G2 + kAccError * quan::pow<2>( magnitude(get_accelerometer()) - quan::acceleration::g));
    
    qSensorFrameOut = slerp(qGyr,qMagAcc,k * k2);
-#endif
+
 }

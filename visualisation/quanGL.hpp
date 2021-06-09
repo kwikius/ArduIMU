@@ -39,14 +39,14 @@ void rotate_display();
 void onKeyboard(unsigned char key,int x, int y);
 
 void reshape(GLint w, GLint h);
+void display() ;
 
-// do any init of sensors etc here
-void init_algorithm();
+// draw whetever cutom stuff for model
+void displayModel();
 
+
+void onIdle();
 // display app title in window frame
 const char* get_title();
-
-void display() ;
-void onIdle();
 
 #endif // QUANGL_HPP_INCLUDED
