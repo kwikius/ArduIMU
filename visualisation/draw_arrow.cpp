@@ -13,7 +13,10 @@ namespace {
 }
 /**
 * @brief draw open gl arrow
-* @param[in] 
+* @param[in] v direction arrow is pointing
+* @param[in] length length of arrow to draw
+* @param[in] main color
+* @param[in] color in back of arrow head to differentiate which way arrow is pointing
 **/
 void draw_arrow( quan_vectf const & v, GLfloat length, quan_vectf fg, quan_vectf bg)
 {

@@ -5,7 +5,8 @@
 
 int main(int argc, char** argv) {
 
-   if ( open_serial_port()){
+   
+   if ( !use_serial_port() || open_serial_port()){
 
       glutInit(&argc, argv);
       glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
@@ -23,8 +24,9 @@ int main(int argc, char** argv) {
       glDepthFunc(GL_LESS);  
 
       glutMainLoop();
-
-      close_serial_port();
+      if (use_serial_port()){
+         close_serial_port();
+      }
    } else{
       return 1;
    }

@@ -10,6 +10,8 @@
 
 const char * get_title(){ return "Display 3D acc input from serial port";}
 
+bool use_serial_port(){return true;}
+
 namespace {
 
    QUAN_QUANTITY_LITERAL(acceleration,m_per_s2)

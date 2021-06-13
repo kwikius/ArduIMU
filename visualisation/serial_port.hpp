@@ -12,4 +12,7 @@ void close_serial_port();
 
 int parse_sp(quan::serial_port& sp, quan::three_d::vect<float> & out);
 
+//defined per app;
+bool use_serial_port();
+
 #endif // QUAN_ARDUIMU_VISUALISATION_SERIAL_PORT_HPP_INCLUDED

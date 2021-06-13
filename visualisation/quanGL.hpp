@@ -8,6 +8,8 @@
 #endif
 
 #include <quan/three_d/vect.hpp>
+#include <quan/three_d/quat.hpp>
+#include <quan/angle.hpp>
 
 typedef quan::three_d::vect<GLfloat> quan_vectf;
 
@@ -16,6 +18,7 @@ struct colours{
    static constexpr quan_vectf yellow{0.9f, 1.0f, 0.0f}; // yellow
    static constexpr quan_vectf blue{0.2f, 0.2f, 1.0f}; // blue
    static constexpr quan_vectf red{0.7f, 0.0f, 0.1f};  // red
+   static constexpr quan_vectf grey{0.5f, 0.5f, 0.5f};  // grey
 };
 
 inline void quanGLVertex(quan_vectf const & v)
@@ -28,11 +31,25 @@ inline void quanGLColor(quan_vectf const & v)
    glColor3f(v.x,v.y,v.z);
 }
 
+inline void quanGLTranslate(quan_vectf const & v)
+{
+   glTranslatef(v.x,v.y,v.z);
+}
+
+inline void quanGLRotate(quan_vectf const & v, quan::angle::deg const & a)
+{
+   glRotatef(a.numeric_value(),v.x,v.y,v.z);
+}
+
+void quanGLMultQuat(quan::three_d::quat<double> const & quat);
+
 void draw_line( quan_vectf const & from, quan_vectf const & to);
 void draw_arrow( quan_vectf const & v, GLfloat length, quan_vectf fg, quan_vectf bg);
 
 void draw_grid();
 void draw_axes();
+
+void draw_plane(quan::three_d::vect<quan::angle::deg> const & ca);
 
 void rotate_display();
 

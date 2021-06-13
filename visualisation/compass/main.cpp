@@ -8,6 +8,8 @@
 
 const char* get_title() {return "Display 3D mag input from serial port";}
 
+bool use_serial_port(){return true;}
+
 namespace {
 
    QUAN_QUANTITY_LITERAL(magnetic_flux_density,uT);

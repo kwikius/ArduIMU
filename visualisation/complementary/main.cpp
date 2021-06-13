@@ -1,36 +1,36 @@
 
 /*
+  copyright (C) 2019 - 2021 Andy Little
+*/
+/*
 originally from
 
 https://cs.lmu.edu/~ray/notes/openglexamples/
 */
 
-#include <quan/out/time.hpp>
+
 #include <sensors/compass.hpp>
 #include <sensors/accelerometer.hpp>
 #include <sensors/gyroscope.hpp>
 #include <quan/three_d/quat.hpp>
 #include <quan/three_d/quatToMatrixOpenGL.hpp>
-
 #include <quanGL.hpp>
 #include <serial_port.hpp>
 
 const char* get_title() { return "IMU using ArduIMU";}
 
+bool use_serial_port(){return true;}
+
 void find_attitude( quan::three_d::quat<double> & quat_out);
 
 namespace {
 
-   QUAN_QUANTITY_LITERAL(time,s);
-   QUAN_QUANTITY_LITERAL(angle,deg);
-   QUAN_QUANTITY_LITERAL(reciprocal_time,per_s);
-
    QUAN_QUANTITY_LITERAL(magnetic_flux_density,uT);
    QUAN_QUANTITY_LITERAL(acceleration,m_per_s2);
 
-   typedef quan::reciprocal_time_<
+   using deg_per_s = quan::reciprocal_time_<
       quan::angle::deg 
-   >::per_s deg_per_s;
+   >::per_s;
 
    constexpr inline 
    deg_per_s operator "" _deg_per_s ( long double v)
@@ -66,7 +66,6 @@ void find_attitude(quan::three_d::quat<double> const & sensor_frame, quan::three
 
 void onIdle()
 {
-
    bool update = false;
    quan::three_d::vect<float> raw_sensor_vector;
    
@@ -86,7 +85,6 @@ void onIdle()
       default:
          break;
    }
-
    if (update){
       glutPostRedisplay();
    }

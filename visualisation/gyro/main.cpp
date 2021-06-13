@@ -11,6 +11,7 @@
 #include <sensors/gyroscope.hpp>
 
 const char* get_title() {return "Display 3D gyro input from serial port";}
+bool use_serial_port(){return true;}
 
 namespace {
 

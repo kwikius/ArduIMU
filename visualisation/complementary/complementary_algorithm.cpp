@@ -1,4 +1,7 @@
 
+/*
+  copyright (C) 2019 - 2021 Andy Little
+*/
 
 #include <sensors/compass.hpp>
 #include <sensors/accelerometer.hpp>
@@ -15,11 +18,7 @@ namespace {
    /** define local quantity literals 
    */
    QUAN_QUANTITY_LITERAL(angle,deg);
-   QUAN_QUANTITY_LITERAL(magnetic_flux_density,uT);
-   QUAN_QUANTITY_LITERAL(magnetic_flux_density,nT);
-   QUAN_QUANTITY_LITERAL(acceleration,m_per_s2);
    QUAN_QUANTITY_LITERAL(time,s);
-   QUAN_QUANTITY_LITERAL(reciprocal_time,per_s);
 
    typedef quan::reciprocal_time_<
       quan::angle::deg 
@@ -44,8 +43,6 @@ namespace {
    quan::time::s prev_sample_time = 0.0_s;
    quan::timer<> timer;
 }
-
-void init_algorithm(){}
 
 /**
 * Estimate sensor board attitude from latest accelerometer and magnetometer readings.

@@ -1,6 +1,7 @@
 
 
 #include <quanGL.hpp>
+#include <quan/three_d/quatToMatrixOpenGL.hpp>
 
 constexpr quan_vectf colours::green; // green
 constexpr quan_vectf colours::yellow; // yellow
@@ -87,7 +88,17 @@ void display()
    glutSwapBuffers();
 }
 
-
+void quanGLMultQuat(quan::three_d::quat<double> const & q)
+{
+   quan::basic_matrix<4,4,float> m = { 
+      1.0, 0.0, 0.0, 0.0,
+      0.0, 1.0, 0.0, 0.0,
+      0.0, 0.0, 1.0, 0.0,
+      0.0, 0.0, 0.0, 1.0
+   };
+   quatToMatrixOpenGL(q,m);
+   glMultMatrixf(m.get_array());
+}
 
 void reshape(GLint w, GLint h) 
 {
