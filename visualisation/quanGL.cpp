@@ -10,8 +10,9 @@ constexpr quan_vectf colours::red;  // red
 
 namespace {
 
+   quan_vectf constexpr default_rotation = {110,0,200};
    // n.b representing angles in degrees
-   quan_vectf display_rotation{110,0,200};
+   quan_vectf display_rotation = default_rotation;
 
    GLfloat 
    modulo_angle( GLfloat const & in)
@@ -57,7 +58,7 @@ void onKeyboard(unsigned char key,int x, int y)
          display_rotation.z = modulo_angle(display_rotation.z + incr);
          break;
       case 'q':
-         display_rotation = {0,0,0};
+         display_rotation = default_rotation;
          break;
       default:
          update = false;

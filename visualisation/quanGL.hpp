@@ -41,7 +41,7 @@ inline void quanGLRotate(quan_vectf const & v, quan::angle::deg const & a)
    glRotatef(a.numeric_value(),v.x,v.y,v.z);
 }
 
-void quanGLMultQuat(quan::three_d::quat<double> const & quat);
+void quanGLMultQuat(quan::three_d::quat<double> const & q);
 
 void draw_line( quan_vectf const & from, quan_vectf const & to);
 void draw_arrow( quan_vectf const & v, GLfloat length, quan_vectf fg, quan_vectf bg);
@@ -49,7 +49,7 @@ void draw_arrow( quan_vectf const & v, GLfloat length, quan_vectf fg, quan_vectf
 void draw_grid();
 void draw_axes();
 
-void draw_plane(quan::three_d::vect<quan::angle::deg> const & ca);
+void draw_plane(quan::three_d::quat<double> const & q,quan::three_d::vect<quan::angle::deg> const & ca);
 
 void rotate_display();
 
