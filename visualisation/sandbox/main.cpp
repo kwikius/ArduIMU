@@ -8,7 +8,10 @@
 
 #include <quanGL.hpp>
 #include <serial_port.hpp>
-#include <sensors/accelerometer.hpp>
+#include <quan/moment_of_inertia.hpp>
+#include <quan/mass.hpp>
+#include <quan/length.hpp>
+#include <quan/torque.hpp>
 #include <quan/utility/timer.hpp>
 #include <quan/three_d/make_vect.hpp>
 #include <quan/three_d/rotation_from.hpp>
@@ -25,15 +28,48 @@ namespace {
    bool printed = false;
 }
 
+/**
+*  Find deflections of roll pitch and yaw control surfaces
+*  to move the aircraft from its current orientation qB
+*  to a new orientation qT
+*  1 Assume there is no movement of the aircraft in the time frame,
+*  therefore torques can be specified in the body frame
+*
+*  Assume the aircraft is not rotating
+*  Assume the aircraft consists of 3 point mass Inertias:
+*   
+*  Ix on the x axis  
+*  Iy on the y axis  
+*  Tz on the z axis 
+*
+*  The body x axis vector is xB
+*  the body y axis vector is yB
+*  the body z axis vector is zB
+*  The desired rotated x body axis vector is xT
+*  the desired rotated y body axis vector is yT
+*  the desired rotated z body axis vector is zT
+*
+* consider the required torque around the x axis ( roll)
+* since the point mass Ix is on the roll axis it is ignored
+* yB is rotated around x axis such by that yT.z = cos(yT.z)
+* zB is rotated around x axis such that zT.y = cos(zT.z)
+**/
+
 namespace {
    QUAN_QUANTITY_LITERAL(angle,deg)
    QUAN_QUANTITY_LITERAL(angle,rad)
+   QUAN_QUANTITY_LITERAL(moment_of_inertia,kg_m2)
+   QUAN_QUANTITY_LITERAL(length,m)
+   QUAN_QUANTITY_LITERAL(mass,kg)
+   QUAN_QUANTITY_LITERAL(torque, N_m)
+   QUAN_QUANTITY_LITERAL(time,ms)
+   
 
    void draw_sandbox()
    {
-      quan::angle::deg euler_yaw = 0_deg;
-      quan::angle::deg euler_roll = 0_deg;
-      quan::angle::deg euler_pitch = -30_deg;
+      quan::angle::deg euler_roll = 15_deg;
+      quan::angle::deg euler_pitch = 15_deg;
+      quan::angle::deg euler_yaw = 15_deg;
 
       // TODO: probably want to rotate yaw first to do pitch and roll
       // ignore for now
@@ -42,50 +78,122 @@ namespace {
 
       auto qpose = unit_quat(quat_from_euler<double>(pose));
 
-      //N.B vzw is pointing down in body frame
-      auto constexpr vzw = quan_vectf{0,0,1};
-      
-      // z axis in body frame
-      auto const vzb = qpose * vzw;
+   quan::three_d::vect<quan::mass::kg> constexpr mass = {
+     0.2_kg, //roll
+     0.2_kg, //pitch
+     0.2_kg // yaw
+   };
 
-      // x axis in world frame
-      auto constexpr vxw = quan_vectf{1,0,0};
+   quan::three_d::vect<quan::length::m> constexpr  dist = {
+     0.5_m, //roll
+     0.5_m, //pitch
+     0.5_m // yaw
+   };
+   
+   quan::three_d::vect<quan::moment_of_inertia::kg_m2> constexpr I = {
+       mass.x * quan::pow<2>(dist.x),
+       mass.y * quan::pow<2>(dist.y),
+       mass.z * quan::pow<2>(dist.z)
+   };
 
-      // x axis in body_frame
-      auto const vxb = qpose * vxw;
+/***
+   angular accel required per deg of axis error
+**/
+  auto accelK = 1./quan::pow<2>(100_ms);
 
-      // quat that rotates body frame x axis to world x axis
-      auto const qxbw = rotation_from(vxb, vxw);
+  auto constexpr W = make_vect(
+      quan::three_d::vect<double>{1,0,0},
+      quan::three_d::vect<double>{0,1,0},
+      quan::three_d::vect<double>{0,0,1} // n.b +z is down
+   );
 
-      // to rotate vzb to x axis
-      auto const vzx = qxbw * vzb;
+   auto const B = quan::three_d::make_vect(
+     qpose * W.x,
+     qpose * W.y,
+     qpose * W.z
+   );
 
-      quan::angle::deg const roll_angle = -quan::atan2(vzx.y,vzx.z);
+   draw_arrow(B.x, 1.f, colours::red, (colours::blue + colours::green )/2 );
 
-      // y axis in world frame
-      auto constexpr vyw = quan_vectf{0,1,0};
-      
-      // y axis in body_frame
-      auto const vyb = qpose * vyw;
+   draw_arrow(B.y,1.f, colours::green,  (colours::blue + colours::red )/2 );
 
-      // quat that rotates body frame y axis to world x axis
-      auto const qybw = rotation_from(vyb, vyw);
+   draw_arrow(B.z,1.f, colours::blue ,  (colours::red + colours::green )/2 );
+// aileron/roll around x axis
+   // y component
+   quan::angle::rad rx_yBT = signed_modulo ((B.y.y > 0)
+   ? quan::angle::rad{std::asin(B.y.z)}
+   : 180_deg - quan::angle::rad{std::asin(B.y.z)}
+   );
 
-      // to rotate vzy to y axis
-      auto const vzy = qybw * vzb;
+   // z component
+   quan::angle::rad rx_zBT = signed_modulo ((B.z.z > 0)
+   ? -quan::angle::rad{std::asin(B.z.y)}
+   : quan::angle::rad{std::asin(B.z.y)} - 180_deg
+   );
 
-      quan::angle::deg const pitch_angle = quan::atan2(vzy.x,vzy.z);
+   quan::torque::N_m torque_x = (rx_yBT * I.y + rx_zBT * I.z ) * accelK;
 
-      draw_plane(qpose, {-roll_angle,-pitch_angle,0_deg});
+// elevator/pitch around y axis
+   // x component
+   quan::angle::rad ry_xBT = signed_modulo ((B.x.x > 0)
+   ? -quan::angle::rad{std::asin(B.x.z)}
+   : quan::angle::rad{std::asin(B.x.z)} - 180_deg
+   );
 
-      if (  printed == false ){
-         // should be same
-         std::cout << "vzx = " << vzx <<'\n';
-        std::cout <<  "vzy = " << vzy <<'\n';
-         std::cout << "roll angle = " << roll_angle <<'\n';
-         std::cout << "pitch angle = " << pitch_angle <<'\n';
-         printed = true;
-      }
+   // z component
+   quan::angle::rad ry_zBT = signed_modulo ((B.z.z > 0)
+   ? quan::angle::rad{std::asin(B.z.x)}
+   : 180_deg -quan::angle::rad{std::asin(B.z.x)}
+   );
+
+   quan::torque::N_m torque_y = (ry_xBT * I.x + ry_zBT * I.z) * accelK ;
+
+   // rudder/yaw around z axis
+   // x component
+   quan::angle::rad rz_xBT = signed_modulo ((B.x.x > 0)
+   ? quan::angle::rad{std::asin(B.x.y)}
+   : 180_deg -quan::angle::rad{std::asin(B.x.y)} 
+   );
+
+   // y component
+   quan::angle::rad rz_yBT = signed_modulo ((B.y.y > 0)
+   ?  -quan::angle::rad{std::asin(B.y.x)}
+   : quan::angle::rad{std::asin(B.y.x)} - 180_deg
+   );
+
+   quan::torque::N_m torque_z = (rz_xBT * I.x + rz_yBT * I.y) * accelK ;
+
+   auto torque_per_deg = quan::three_d::make_vect(
+        1.0_N_m/ 1_rad, // aileron
+         1.0_N_m/ 1_rad,// elevator
+         1.0_N_m/ 1_rad// rudder
+   );
+
+   auto deflections = quan::three_d::make_vect(
+       -torque_x / torque_per_deg.x,
+       -torque_y/ torque_per_deg.y,
+       -torque_z/ torque_per_deg.z
+    );
+
+   draw_plane(qpose, deflections);
+
+ 
+   if (  printed == false ){
+
+      std::cout << "roll axis ----------\n";
+      std::cout << "rx_yBT = " << quan::angle::deg{rx_yBT} <<'\n';
+      std::cout << "rx_zBT = " << quan::angle::deg{rx_zBT} <<'\n';
+      std::cout << "pitch axis ------------\n";
+      std::cout << "ry_xBT = " << quan::angle::deg{ry_xBT} <<'\n';
+      std::cout << "ry_zBT = " << quan::angle::deg{ry_zBT} <<'\n';
+      std::cout << "yaw axis -----------\n";
+      std::cout << "rz_xBT = " << quan::angle::deg{rz_xBT} <<'\n';
+      std::cout << "rz_yBT = " << quan::angle::deg{rz_yBT} <<'\n';
+
+      printed = true;
+   }
+
+
 
    }
 
@@ -99,7 +207,7 @@ void displayModel()
 }
 
 namespace {
-   QUAN_QUANTITY_LITERAL(time,ms)
+   //QUAN_QUANTITY_LITERAL(time,ms)
    quan::timer timer;
    quan::time::ms prev;
 }
