@@ -9,10 +9,10 @@ namespace {
 
    using vf = quan::three_d::vect<float>;
    float constexpr chord = 0.5f;
-   float constexpr span = 1;
-   float constexpr thickness = 0.05;
-   float constexpr tail_height = 0.1;
-   float constexpr elevon_chord = 0.1;
+   float constexpr span = 1.4;
+   float constexpr thickness = 0.1;
+   float constexpr tail_height = 0.12;
+   float constexpr elevon_chord = 0.2;
    float constexpr rudder_chord = 0.15;
 
    vf nose = {chord/2,0,0};

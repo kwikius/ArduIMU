@@ -171,14 +171,17 @@ namespace {
    /***
       angular accel required per deg of axis error
    **/
-     auto accelK = 1./quan::pow<2>(100_ms);
+     auto accelK = 1./quan::pow<2>(120_ms);
 
+
+     //world frame
      auto constexpr W = make_vect(
          quan::three_d::vect<double>{1,0,0},
          quan::three_d::vect<double>{0,1,0},
          quan::three_d::vect<double>{0,0,1} // n.b +z is down
       );
 
+      // 
       auto const B = quan::three_d::make_vect(
         qpose * W.x,
         qpose * W.y,
