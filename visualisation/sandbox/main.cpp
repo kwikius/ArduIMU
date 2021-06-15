@@ -9,6 +9,7 @@
 #include <quanGL.hpp>
 #include <serial_port.hpp>
 #include <quan/moment_of_inertia.hpp>
+#include <quan/constrain.hpp>
 #include <quan/mass.hpp>
 #include <quan/length.hpp>
 #include <quan/torque.hpp>
@@ -67,9 +68,9 @@ namespace {
 
    void draw_sandbox()
    {
-      quan::angle::deg euler_roll = 15_deg;
-      quan::angle::deg euler_pitch = 15_deg;
-      quan::angle::deg euler_yaw = 15_deg;
+      quan::angle::deg euler_roll = 30_deg;
+      quan::angle::deg euler_pitch = 30_deg;
+      quan::angle::deg euler_yaw = 30_deg;
 
       // TODO: probably want to rotate yaw first to do pitch and roll
       // ignore for now
@@ -169,11 +170,12 @@ namespace {
          1.0_N_m/ 1_rad// rudder
    );
 
-   auto deflections = quan::three_d::make_vect(
-       -torque_x / torque_per_deg.x,
-       -torque_y/ torque_per_deg.y,
-       -torque_z/ torque_per_deg.z
-    );
+   quan::angle::rad max_defl = 45_deg;
+   quan::three_d::vect<quan::angle::deg> deflections = quan::three_d::make_vect(
+      quan::constrain(-torque_x/torque_per_deg.x,-max_defl,max_defl),
+      quan::constrain(-torque_y/torque_per_deg.y,-max_defl,max_defl),
+      quan::constrain(-torque_z/torque_per_deg.z,-max_defl,max_defl)
+   );
 
    draw_plane(qpose, deflections);
 
@@ -189,6 +191,8 @@ namespace {
       std::cout << "yaw axis -----------\n";
       std::cout << "rz_xBT = " << quan::angle::deg{rz_xBT} <<'\n';
       std::cout << "rz_yBT = " << quan::angle::deg{rz_yBT} <<'\n';
+
+      std::cout << "deflections = " << deflections<<'\n';
 
       printed = true;
    }
