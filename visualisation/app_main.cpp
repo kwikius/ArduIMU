@@ -1,13 +1,30 @@
 
 
 #include <serial_port.hpp>
+#include <joystick.hpp>
 #include <quanGL.hpp>
+#include <stdexcept>
+
+namespace {
+  joystick * p_joystick = nullptr;
+}
+
+const joystick & get_joystick()
+{
+  if (p_joystick == nullptr){
+    throw std::logic_error("joystick not available");
+  }
+  return *p_joystick;
+}
 
 int main(int argc, char** argv) {
 
    
    if ( !use_serial_port() || open_serial_port()){
 
+      if (use_joystick()){
+         p_joystick = new joystick("/dev/input/js0");
+      }
       glutInit(&argc, argv);
       glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
       glutInitWindowPosition(80, 80);
@@ -26,6 +43,10 @@ int main(int argc, char** argv) {
       glutMainLoop();
       if (use_serial_port()){
          close_serial_port();
+      }
+      if ( use_joystick()){
+         delete p_joystick;
+         p_joystick = nullptr;
       }
    } else{
       return 1;

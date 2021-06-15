@@ -19,6 +19,7 @@ struct colours{
    static constexpr quan_vectf blue{0.2f, 0.2f, 1.0f}; // blue
    static constexpr quan_vectf red{0.7f, 0.0f, 0.1f};  // red
    static constexpr quan_vectf grey{0.5f, 0.5f, 0.5f};  // grey
+   static constexpr quan_vectf white{1.f, 1.f, 1.f};  // white
 };
 
 inline void quanGLVertex(quan_vectf const & v)
