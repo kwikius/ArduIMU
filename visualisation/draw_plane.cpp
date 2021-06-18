@@ -9,7 +9,7 @@ namespace {
 
    using vf = quan::three_d::vect<float>;
    float constexpr chord = 0.5f;
-   float constexpr span = 1.4;
+   float constexpr span = 1.2;
    float constexpr thickness = 0.1;
    float constexpr tail_height = 0.12;
    float constexpr elevon_chord = 0.2;
