@@ -1,7 +1,4 @@
 
-
-
-
 /*
   copyright (C) 2019 - 2021 Andy Little
 */
@@ -28,9 +25,9 @@ const char * get_title(){ return "OpenGL arduimu Sandbox";}
 bool use_serial_port(){return false;}
 bool use_joystick(){return true;}
 
-namespace {
-   bool printed = false;
-}
+//namespace {
+//   bool printed = false;
+//}
 
 /**
 *  Find deflections of roll pitch and yaw control surfaces
@@ -89,22 +86,17 @@ namespace {
       return deg_per_s{quan::angle::rad{v}};
    }
 
-   using turn_rate_t = quan::three_d::vect<rad_per_s>; 
-
-   turn_rate_t turn_rate;
-
-   turn_rate_t const max_turn_rate
+   quan::three_d::vect<rad_per_s> const max_turn_rate
     = {
        90.0_deg_per_s,   //roll
         90.0_deg_per_s,  //pitch
           90.0_deg_per_s  //yaw
    };
 
-   using stick_percent_t = quan::three_d::vect<double>;
-   stick_percent_t stick_percent;
-
-   void update_turnrate()
+   void update_turnrate(quan::three_d::vect<rad_per_s> & turn_rate)
    {
+      using stick_percent_t = quan::three_d::vect<double>;
+      stick_percent_t stick_percent;
       auto const & js = get_joystick();
       js.update(stick_percent);
 
@@ -114,52 +106,51 @@ namespace {
       }
    }
 
-   using pose_t = quan::three_d::vect<quan::angle::rad>;
-   pose_t pose;
-
-   void normalise_pose(pose_t & pose)
+   quan::angle::rad 
+   constrain_angle(quan::angle::rad const & in)
    {
-      for ( int32_t i = 0; i < 3; ++i){
-         while ( pose[i] < 0.0_deg){
-            pose[i] += 360.0_deg;
-         }
-         while ( pose[i] >= 360.0_deg){
-            pose[i] -= 360.0_deg;
-         }
+      auto v = in;
+      while (v > 180_deg){
+        v -= 360_deg;
       }
+      while ( v <= -180_deg){
+        v += 360_deg;
+      }
+      return v;
    }
 
+   /**
+    *
+    **/
    quan::three_d::quat<double> qpose{1.0,0.0,0.0,0.0};
 
-   quan::time::ms update_period = 20_ms;
+   quan::time::ms constexpr update_period = 20_ms;
 
    void update_model_frame()
    {
-      update_turnrate();
+      quan::three_d::vect<rad_per_s> turn_rate;
+      update_turnrate(turn_rate);
       auto const turn = turn_rate * update_period;
       auto const magturn = magnitude(turn);
       if ( magturn > 0.001_rad){
          auto const qturn = quatFrom(unit_vector(turn),magturn);
          qpose = unit_quat(hamilton_product(qpose,qturn));
-         pose = euler_from_quat(qpose);
-         normalise_pose(pose);
       }
    }
 
    void draw_sandbox()
    {
-
       update_model_frame();
       quan::three_d::vect<quan::mass::kg> constexpr mass = {
-        0.2_kg, //roll
-        0.2_kg, //pitch
-        0.2_kg // yaw
+        0.5_kg, //along x axis
+        2_kg, //along y axis
+        0.1_kg // along z axis
       };
 
       quan::three_d::vect<quan::length::m> constexpr  dist = {
-        0.5_m, //roll
-        0.5_m, //pitch
-        0.5_m // yaw
+        0.5_m, //along x axis
+        1_m, //along y axis
+        0.1_m // along z axis
       };
       
       quan::three_d::vect<quan::moment_of_inertia::kg_m2> constexpr I = {
@@ -173,15 +164,14 @@ namespace {
    **/
      auto accelK = 1./quan::pow<2>(120_ms);
 
-
-     //world frame
+     // World Frame
      auto constexpr W = make_vect(
          quan::three_d::vect<double>{1,0,0},
          quan::three_d::vect<double>{0,1,0},
          quan::three_d::vect<double>{0,0,1} // n.b +z is down
       );
 
-      // 
+      // Body Frame
       auto const B = quan::three_d::make_vect(
         qpose * W.x,
         qpose * W.y,
@@ -193,15 +183,16 @@ namespace {
       draw_arrow(B.y,1.f, (colours::green + colours::white)/2,  (colours::blue + colours::red )/2 );
 
       draw_arrow(B.z,1.f, (colours::blue + colours::white)/2,  (colours::red + colours::green )/2 );
+
    // aileron/roll around x axis
       // y component
-      quan::angle::rad rx_yBT = signed_modulo ((B.y.y > 0)
+      quan::angle::rad rx_yBT = constrain_angle((B.y.y > 0)
       ? quan::angle::rad{std::asin(B.y.z)}
       : 180_deg - quan::angle::rad{std::asin(B.y.z)}
       );
 
       // z component
-      quan::angle::rad rx_zBT = signed_modulo ((B.z.z > 0)
+      quan::angle::rad rx_zBT = constrain_angle((B.z.z > 0)
       ? -quan::angle::rad{std::asin(B.z.y)}
       : quan::angle::rad{std::asin(B.z.y)} - 180_deg
       );
@@ -210,28 +201,29 @@ namespace {
 
    // elevator/pitch around y axis
       // x component
-      quan::angle::rad ry_xBT = signed_modulo ((B.x.x > 0)
+      quan::angle::rad ry_xBT = constrain_angle((B.x.x > 0)
       ? -quan::angle::rad{std::asin(B.x.z)}
       : quan::angle::rad{std::asin(B.x.z)} - 180_deg
       );
 
       // z component
-      quan::angle::rad ry_zBT = signed_modulo ((B.z.z > 0)
+      quan::angle::rad ry_zBT = constrain_angle((B.z.z > 0)
       ? quan::angle::rad{std::asin(B.z.x)}
       : 180_deg -quan::angle::rad{std::asin(B.z.x)}
       );
 
+      // TODO multiply by abs(cos(B.y.z))
       quan::torque::N_m torque_y = (ry_xBT * I.x + ry_zBT * I.z) * accelK ;
 
       // rudder/yaw around z axis
       // x component
-      quan::angle::rad rz_xBT = signed_modulo ((B.x.x > 0)
+      quan::angle::rad rz_xBT = constrain_angle((B.x.x > 0)
       ? quan::angle::rad{std::asin(B.x.y)}
       : 180_deg -quan::angle::rad{std::asin(B.x.y)} 
       );
 
       // y component
-      quan::angle::rad rz_yBT = signed_modulo ((B.y.y > 0)
+      quan::angle::rad rz_yBT = constrain_angle((B.y.y > 0)
       ?  -quan::angle::rad{std::asin(B.y.x)}
       : quan::angle::rad{std::asin(B.y.x)} - 180_deg
       );
@@ -239,9 +231,9 @@ namespace {
       quan::torque::N_m torque_z = (rz_xBT * I.x + rz_yBT * I.y) * accelK ;
 
       auto torque_per_deg = quan::three_d::make_vect(
-           1.0_N_m/ 1_rad, // aileron
-            1.0_N_m/ 1_rad,// elevator
-            1.0_N_m/ 1_rad// rudder
+           30.0_N_m/ 1_rad, // aileron
+            2.0_N_m/ 1_rad,// elevator
+            30.0_N_m/ 1_rad// rudder
       );
 
       quan::angle::rad max_defl = 45_deg;
@@ -253,24 +245,36 @@ namespace {
 
       draw_plane(qpose, deflections);
 
-      if (  printed == false ){
-
-         std::cout << "roll axis ----------\n";
-         std::cout << "rx_yBT = " << quan::angle::deg{rx_yBT} <<'\n';
-         std::cout << "rx_zBT = " << quan::angle::deg{rx_zBT} <<'\n';
-         std::cout << "pitch axis ------------\n";
-         std::cout << "ry_xBT = " << quan::angle::deg{ry_xBT} <<'\n';
-         std::cout << "ry_zBT = " << quan::angle::deg{ry_zBT} <<'\n';
-         std::cout << "yaw axis -----------\n";
-         std::cout << "rz_xBT = " << quan::angle::deg{rz_xBT} <<'\n';
-         std::cout << "rz_yBT = " << quan::angle::deg{rz_yBT} <<'\n';
-
-         std::cout << "deflections = " << deflections<<'\n';
-
-         printed = true;
+      /// draw text
+      {
+         glPushMatrix();
+            glLoadIdentity();
+            constexpr size_t bufSize = 255;
+            char buf[bufSize];
+            float y = -0.5;
+            float constexpr x = 0.4;
+            float constexpr rh = 0.07;
+            quanGLColor(colours::white);
+            snprintf(buf,bufSize,"x axis: y=% 8.2f deg, z=% 8.2f deg",
+               quan::angle::deg{rx_yBT}.numeric_value(),
+               quan::angle::deg{rx_zBT}.numeric_value()
+            );
+            quanGLText(buf,{x,y});
+            y -= rh;
+            snprintf(buf,bufSize,"y axis: x=% 8.2f deg, z=% 8.2f deg",
+               quan::angle::deg{ry_xBT}.numeric_value(),
+               quan::angle::deg{ry_zBT}.numeric_value()
+            );
+            quanGLText(buf,{x,y});
+            y -= rh;
+            snprintf(buf,bufSize,"z axis: x=% 8.2f deg, y=% 8.2f deg",
+               quan::angle::deg{rz_xBT}.numeric_value(),
+               quan::angle::deg{rz_yBT}.numeric_value()
+            );
+         quanGLText(buf,{x,y});
+         glPopMatrix();
       }
    }
-
 }
 
 void displayModel() 
@@ -281,7 +285,6 @@ void displayModel()
 }
 
 namespace {
-   //QUAN_QUANTITY_LITERAL(time,ms)
    quan::timer timer;
    quan::time::ms prev;
 }
