@@ -7,9 +7,12 @@
 #include <GL/glut.h>
 #endif
 
+#include <cstring>
 #include <quan/three_d/vect.hpp>
 #include <quan/three_d/quat.hpp>
+#include <quan/two_d/vect.hpp>
 #include <quan/angle.hpp>
+
 
 typedef quan::three_d::vect<GLfloat> quan_vectf;
 
@@ -46,6 +49,19 @@ void quanGLMultQuat(quan::three_d::quat<double> const & q);
 
 void draw_line( quan_vectf const & from, quan_vectf const & to);
 void draw_arrow( quan_vectf const & v, GLfloat length, quan_vectf fg, quan_vectf bg);
+
+/**
+ * @brief Draws text at pos in current transform
+ * Note: To draw text on screen surface use pushMatrix, LoadIdentity,... popPmatrix
+ **/
+   inline void quanGLText(const char * str, quan::two_d::vect<float> const & pos)
+   {
+      glRasterPos2f(pos.x, pos.y);
+      int const len = strlen(str);
+      for (int i = 0; i < len; ++i) {
+         glutBitmapCharacter(GLUT_BITMAP_9_BY_15, str[i]);
+      }
+   }
 
 void draw_grid();
 void draw_axes();
