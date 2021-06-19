@@ -107,22 +107,6 @@ namespace {
       }
    }
 
-   quan::angle::rad 
-   constrain_angle(quan::angle::rad const & in)
-   {
-      auto v = in;
-      while (v > 180_deg){
-        v -= 360_deg;
-      }
-      while ( v <= -180_deg){
-        v += 360_deg;
-      }
-      return v;
-   }
-
-   /**
-    *
-    **/
    quan::three_d::quat<double> qpose{1.0,0.0,0.0,0.0};
 
    quan::time::ms constexpr update_period = 20_ms;
@@ -154,33 +138,52 @@ namespace {
    template <typename BodyFrame, typename WorldFrame, typename Inertia, typename AccelK>
    quan::torque::N_m get_torque_x(BodyFrame const & B, WorldFrame const & W, Inertia const & I, AccelK const & accelK, bool draw)
    {
- // get zrotation of x-axis to align vertically with world x
+     // get zrotation of x-axis to align vertically with world x
       auto const rotBWx = quan::three_d::z_rotation(-quan::atan2(B.x.y,B.x.x));
       auto const BWx = make_vect(
          rotBWx(B.x), 
          rotBWx(B.y),
          rotBWx(B.z)
       );
-      if (draw){
-         draw_arrow(BWx.x, 1.f, (colours::red + colours::grey)/2, (colours::blue + colours::green )/2 );
-         draw_arrow(BWx.y, 1.f, (colours::green + colours::grey)/2, (colours::blue + colours::red  )/2 );
-         draw_arrow(BWx.z, 1.f, (colours::blue + colours::grey)/2,  (colours::red + colours::green )/2 );
-      }
 
       quan::angle::rad const errorAngleLim = quan::atan2(abs(BWx.x.x),abs(BWx.x.z))/2;
       // aileron/roll around x axis ---------------------------
       // y component
-      quan::angle::rad const rxy = 0_rad;// quan::constrain(quan::atan2(BWx.y.z,BWx.y.y),-errorAngleLim,errorAngleLim);
+      quan::angle::rad const rxy = quan::constrain(quan::atan2(BWx.y.z,BWx.y.y),-errorAngleLim,errorAngleLim);
       // z component
       quan::angle::rad const rxz = quan::constrain(-quan::atan2(BWx.z.y,BWx.z.z),-errorAngleLim,errorAngleLim);
       // scale by abs cosine of angle of Bwx with W.x Bw_x.x.x 
       quan::torque::N_m torque_x = abs(BWx.x.x) * (rxy * I.y + rxz * I.z  ) * accelK;
 
+      if (draw){
+
+         draw_arrow(BWx.x, 1.f, (colours::red + colours::grey)/2, (colours::blue + colours::green )/2 );
+         draw_arrow(BWx.y, 1.f, (colours::green + colours::grey)/2, (colours::blue + colours::red  )/2 );
+         draw_arrow(BWx.z, 1.f, (colours::blue + colours::grey)/2,  (colours::red + colours::green )/2 );
+
+         glPushMatrix();
+            glLoadIdentity();
+            constexpr size_t bufSize = 255;
+            char buf[bufSize];
+            float const y = -0.5;
+            float constexpr x = 0.4;
+           // float constexpr dy = 0.07;
+            quanGLColor(colours::white);
+            snprintf(buf,bufSize,"x axis: y=% 8.2f deg, z=% 8.2f deg, xT=% 8.2f N_m",
+               quan::angle::deg{rxy}.numeric_value(),
+               quan::angle::deg{rxz}.numeric_value(),
+               torque_x.numeric_value()
+            );
+            quanGLText(buf,{x,y});
+         glPopMatrix();
+      }
       return torque_x;
    }
-   // same for 
-
-  template <typename BodyFrame, typename WorldFrame, typename Inertia, typename AccelK>
+ 
+   /**
+    * @brief as above for y axis
+   **/
+   template <typename BodyFrame, typename WorldFrame, typename Inertia, typename AccelK>
    quan::torque::N_m get_torque_y(BodyFrame const & B, WorldFrame const & W, Inertia const & I, AccelK const & accelK, bool draw)
    {
     // get zrotation of y-axis to align horizontally with world y
@@ -192,12 +195,12 @@ namespace {
       );
 
       quan::angle::rad const errorAngleLim = quan::atan2(abs(BWy.y.y),abs(BWy.y.z))/2;
-//      // elevator/pitch around y axis ---------------------------
-//      // x component
+      // elevator/pitch around y axis ---------------------------
+      // x component
       quan::angle::rad const ryx = quan::constrain(-quan::atan2(BWy.x.z,BWy.x.x),-errorAngleLim,errorAngleLim);
       // z component
       quan::angle::rad const ryz = quan::constrain(quan::atan2(BWy.z.x,BWy.z.z),-errorAngleLim,errorAngleLim);
-//      // scale by abs cosine of angle of Bwx with W.x Bw_x.x.x 
+      // scale by abs cosine of angle of Bwy with W.y  
       quan::torque::N_m torque_y = abs(BWy.y.y) * (ryx * I.x + ryz * I.z  ) * accelK;
 
       if (draw){
@@ -209,23 +212,24 @@ namespace {
             glLoadIdentity();
             constexpr size_t bufSize = 255;
             char buf[bufSize];
-            float y = -0.5;
+            float y = -0.57;
             float constexpr x = 0.4;
-           // float constexpr rh = 0.07;
+           // float constexpr dy = 0.07;
             quanGLColor(colours::white);
-            snprintf(buf,bufSize,"y axis: x=% 8.2f deg, z=% 8.2f deg",
+            snprintf(buf,bufSize,"y axis: x=% 8.2f deg, z=% 8.2f deg, xT=% 8.2f N_m",
                quan::angle::deg{ryx}.numeric_value(),
-               quan::angle::deg{ryz}.numeric_value()
+               quan::angle::deg{ryz}.numeric_value(),
+               torque_y.numeric_value()
             );
             quanGLText(buf,{x,y});
-            glPopMatrix();
+         glPopMatrix();
       }
-
       return torque_y;
-     // return torque_x;
    }
 
-
+   /**
+     * @todo yaw axis
+   **/
 
    void draw_sandbox()
    {
@@ -269,37 +273,9 @@ namespace {
       );
 
      // correcting torque around x axis
-     quan::torque::N_m torque_x = get_torque_x(B,W,I,accelK,true);
-     quan::torque::N_m torque_y = 0_N_m;//get_torque_y(B,W,I,accelK,true);
-//-------------
-      // elevator/pitch around y axis ------------------------
-      // x component
-      quan::angle::rad ry_xBT = constrain_angle((B.x.x > 0)
-      ? -quan::angle::rad{std::asin(B.x.z)}
-      : quan::angle::rad{std::asin(B.x.z)} - 180_deg
-      );
-
-      // z component
-      quan::angle::rad ry_zBT = constrain_angle((B.z.z > 0)
-      ? quan::angle::rad{std::asin(B.z.x)}
-      : 180_deg -quan::angle::rad{std::asin(B.z.x)}
-      );
-
-      // TODO multiply by abs(cos(B.y.z))
-      //quan::torque::N_m torque_y = 0_N_m; //(ry_xBT * I.x + ry_zBT * I.z) * accelK ;
-
-      // rudder/yaw around z axis --------------------
-      // x component
-      quan::angle::rad rz_xBT = constrain_angle((B.x.x > 0)
-      ? quan::angle::rad{std::asin(B.x.y)}
-      : 180_deg -quan::angle::rad{std::asin(B.x.y)} 
-      );
-
-      // y component
-      quan::angle::rad rz_yBT = constrain_angle((B.y.y > 0)
-      ?  -quan::angle::rad{std::asin(B.y.x)}
-      : quan::angle::rad{std::asin(B.y.x)} - 180_deg
-      );
+     bool const show_text = false;
+     quan::torque::N_m torque_x = get_torque_x(B,W,I,accelK,show_text);
+     quan::torque::N_m torque_y = get_torque_y(B,W,I,accelK,show_text);
 
       quan::torque::N_m torque_z = 0_N_m;//(rz_xBT * I.x + rz_yBT * I.y) * accelK ;
 
@@ -317,37 +293,6 @@ namespace {
       );
 
       draw_plane(qpose, deflections);
-#if 0
-      /// draw text
-      {
-         glPushMatrix();
-            glLoadIdentity();
-            constexpr size_t bufSize = 255;
-            char buf[bufSize];
-            float y = -0.5;
-            float constexpr x = 0.4;
-            float constexpr rh = 0.07;
-            quanGLColor(colours::white);
-            snprintf(buf,bufSize,"x axis: y=% 8.2f deg, z=% 8.2f deg",
-               quan::angle::deg{rxy}.numeric_value(),
-               quan::angle::deg{rxz}.numeric_value()
-            );
-            quanGLText(buf,{x,y});
-//            y -= rh;
-//            snprintf(buf,bufSize,"y axis: x=% 8.2f deg, z=% 8.2f deg",
-//               quan::angle::deg{ry_xBT}.numeric_value(),
-//               quan::angle::deg{ry_zBT}.numeric_value()
-//            );
-//            quanGLText(buf,{x,y});
-//            y -= rh;
-//            snprintf(buf,bufSize,"z axis: x=% 8.2f deg, y=% 8.2f deg",
-//               quan::angle::deg{rz_xBT}.numeric_value(),
-//               quan::angle::deg{rz_yBT}.numeric_value()
-//            );
-//             quanGLText(buf,{x,y});
-         glPopMatrix();
-      }
-#endif
    }
 }
 
