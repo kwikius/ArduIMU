@@ -2,25 +2,27 @@
 /*
   copyright (C) 2019 - 2021 Andy Little
 */
+#include <iostream>
 
-#include <quanGL.hpp>
-#include <serial_port.hpp>
-#include <joystick.hpp>
-#include <quan/moment_of_inertia.hpp>
 #include <quan/constrain.hpp>
+#include <quan/utility/timer.hpp>
+
+#include <quan/moment_of_inertia.hpp>
 #include <quan/mass.hpp>
 #include <quan/length.hpp>
 #include <quan/velocity.hpp>
 #include <quan/torque.hpp>
+#include <quan/angular_velocity.hpp>
+#include <quan/atan2.hpp>
+
 #include <quan/three_d/rotation.hpp>
-#include <quan/utility/timer.hpp>
 #include <quan/three_d/make_vect.hpp>
 #include <quan/three_d/rotation_from.hpp>
-#include <quan/reciprocal_time.hpp>
-#include <quan/out/angle.hpp>
 #include <quan/three_d/out/vect.hpp>
-#include <quan/atan2.hpp>
-#include <iostream>
+
+#include <serial_port.hpp>
+#include <joystick.hpp>
+#include <quanGL.hpp>
 
 const char * get_title(){ return "torque differential error";}
 bool use_serial_port(){return false;}
@@ -32,6 +34,8 @@ bool use_joystick(){return true;}
  *  Find torque and show deflections of roll pitch and yaw control surfaces
  *  to correct differential error *
  **/
+
+QUAN_USING_ANGULAR_VELOCITY
 
 namespace {
 
@@ -45,26 +49,6 @@ namespace {
    QUAN_QUANTITY_LITERAL(time,ms)
    QUAN_QUANTITY_LITERAL(time,s)
 
-   using rad_per_s = quan::reciprocal_time_<
-      quan::angle::rad 
-   >::per_s ;
-
-   using deg_per_s = quan::reciprocal_time_<
-      quan::angle::deg 
-   >::per_s ;
-
-   constexpr inline 
-   deg_per_s operator "" _deg_per_s ( long double v)
-   {
-      return deg_per_s{quan::angle::deg{v}};
-   }
-
-   constexpr inline 
-   rad_per_s operator "" _rad_per_s ( long double v)
-   {
-      return deg_per_s{quan::angle::rad{v}};
-   }
-
    quan::three_d::vect<rad_per_s> const max_turn_rate
     = {
        90.0_deg_per_s,   //roll
@@ -72,16 +56,19 @@ namespace {
           90.0_deg_per_s  //yaw
    };
 
-   quan::time::ms constexpr update_period = 20_ms;
+   auto constexpr update_period = 20_ms;
 
    quan::three_d::quat<double> qpose{1.0,0.0,0.0,0.0};
-   quan::three_d::vect<rad_per_s> turn_rate{ 0.0_rad_per_s,0.0_rad_per_s,0.0_rad_per_s};
+   quan::three_d::vect<rad_per_s> turn_rate{ 
+      0.0_rad_per_s,
+         0.0_rad_per_s,
+            0.0_rad_per_s
+   };
 
    void update_turnrate()
    {
-      using stick_percent_t = quan::three_d::vect<double>;
-      stick_percent_t stick_percent;
       auto const & js = get_joystick();
+      quan::three_d::vect<double>; stick_percent;
       js.update(stick_percent);
 
       /// @brief calc turn rates vector per element
@@ -102,7 +89,7 @@ namespace {
    }
 
    /**
-   *  @brief derive torque required from ailerons to counteract turn rate around x axis
+   *  @brief derive differential aileron torque
    **/
    template <typename Inertia>
    quan::three_d::vect<quan::torque::N_m> get_torque(Inertia const & I,bool draw)
@@ -196,5 +183,3 @@ void onIdle()
       glutPostRedisplay();
    }
 }
-
-
