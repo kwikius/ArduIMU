@@ -139,19 +139,109 @@ namespace {
       }
    }
 
+   /**
+   *  @brief derive torque required from ailerons to return to straight and level flight.
+   *
+   *  The Bodyframe is first rotated to BWx so that the xx axis lies in the world xz plane
+   *  The error angles around each of x and y axes are limited to an angle proportional to BWx.x angle with W.z 
+   *  Therefore as the BWx.x axis moves away from world axis so allowed movement is reduced. So for example as
+   *  the nose of the aircraft points more and more vertical do the ailerons have less and less effect in helping to return to level flight.
+   *  The torques for correcting y and z are calculated
+   *  The resulting torque is further multiplied by the cosine of the angle of BWx.x with W.x
+   * 
+   * @todo N.B:  Worldframe is in fact not rotated in current function so need to sort and rename targetframe
+   **/
+   template <typename BodyFrame, typename WorldFrame, typename Inertia, typename AccelK>
+   quan::torque::N_m get_torque_x(BodyFrame const & B, WorldFrame const & W, Inertia const & I, AccelK const & accelK, bool draw)
+   {
+ // get zrotation of x-axis to align vertically with world x
+      auto const rotBWx = quan::three_d::z_rotation(-quan::atan2(B.x.y,B.x.x));
+      auto const BWx = make_vect(
+         rotBWx(B.x), 
+         rotBWx(B.y),
+         rotBWx(B.z)
+      );
+      if (draw){
+         draw_arrow(BWx.x, 1.f, (colours::red + colours::grey)/2, (colours::blue + colours::green )/2 );
+         draw_arrow(BWx.y, 1.f, (colours::green + colours::grey)/2, (colours::blue + colours::red  )/2 );
+         draw_arrow(BWx.z, 1.f, (colours::blue + colours::grey)/2,  (colours::red + colours::green )/2 );
+      }
+
+      quan::angle::rad const errorAngleLim = quan::atan2(abs(BWx.x.x),abs(BWx.x.z))/2;
+      // aileron/roll around x axis ---------------------------
+      // y component
+      quan::angle::rad const rxy = quan::constrain(quan::atan2(BWx.y.z,BWx.y.y),-errorAngleLim,errorAngleLim);
+      // z component
+      quan::angle::rad const rxz = quan::constrain(quan::atan2(BWx.y.y,BWx.y.z),-errorAngleLim,errorAngleLim);
+      // scale by abs cosine of angle of Bwx with W.x Bw_x.x.x 
+      quan::torque::N_m torque_x = abs(BWx.x.x) * (rxy * I.y + rxz * I.z  ) * accelK;
+
+      return torque_x;
+   }
+   // same for 
+
+  template <typename BodyFrame, typename WorldFrame, typename Inertia, typename AccelK>
+   quan::torque::N_m get_torque_y(BodyFrame const & B, WorldFrame const & W, Inertia const & I, AccelK const & accelK, bool draw)
+   {
+    // get zrotation of y-axis to align horizontally with world y
+      auto const rotBWy = quan::three_d::z_rotation(quan::atan2(B.y.x,B.y.y));
+      auto const BWy = make_vect(
+         rotBWy(B.x), 
+         rotBWy(B.y),
+         rotBWy(B.z)
+      );
+
+      quan::angle::rad const errorAngleLim = quan::atan2(abs(BWy.y.y),abs(BWy.y.z))/2;
+//      // elevator/pitch around y axis ---------------------------
+//      // x component
+      quan::angle::rad const ryx = quan::constrain(-quan::atan2(BWy.x.z,BWy.x.x),-errorAngleLim,errorAngleLim);
+      // z component
+      quan::angle::rad const ryz = quan::constrain(quan::atan2(BWy.z.x,BWy.z.z),-errorAngleLim,errorAngleLim);
+//      // scale by abs cosine of angle of Bwx with W.x Bw_x.x.x 
+      quan::torque::N_m torque_y = abs(BWy.y.y) * (ryx * I.x + ryz * I.z  ) * accelK;
+
+      if (draw){
+         draw_arrow(BWy.x, 1.f, (colours::red + colours::grey)/2, (colours::blue + colours::green )/2 );
+         draw_arrow(BWy.y, 1.f, (colours::green + colours::grey)/2, (colours::blue + colours::red  )/2 );
+         draw_arrow(BWy.z, 1.f, (colours::blue + colours::grey)/2,  (colours::red + colours::green )/2 );
+
+
+         glPushMatrix();
+            glLoadIdentity();
+            constexpr size_t bufSize = 255;
+            char buf[bufSize];
+            float y = -0.5;
+            float constexpr x = 0.4;
+           // float constexpr rh = 0.07;
+            quanGLColor(colours::white);
+            snprintf(buf,bufSize,"y axis: x=% 8.2f deg, z=% 8.2f deg",
+               quan::angle::deg{ryx}.numeric_value(),
+               quan::angle::deg{ryz}.numeric_value()
+            );
+            quanGLText(buf,{x,y});
+            glPopMatrix();
+      }
+
+      return torque_y;
+     // return torque_x;
+   }
+
+
+
    void draw_sandbox()
    {
       update_model_frame();
+
       quan::three_d::vect<quan::mass::kg> constexpr mass = {
         0.5_kg, //along x axis
         2_kg, //along y axis
-        0.1_kg // along z axis
+        1_kg // along z axis
       };
 
       quan::three_d::vect<quan::length::m> constexpr  dist = {
         0.5_m, //along x axis
         1_m, //along y axis
-        0.1_m // along z axis
+        0.5_m // along z axis
       };
       
       quan::three_d::vect<quan::moment_of_inertia::kg_m2> constexpr I = {
@@ -179,31 +269,10 @@ namespace {
         qpose * W.z
       );
 
-//      draw_arrow(B.x, 1.f, (colours::red + colours::black)/2, (colours::blue + colours::green )/2 );
-//      draw_arrow(B.y,1.f, (colours::green + colours::black)/2,  (colours::blue + colours::red )/2 );
-//      draw_arrow(B.z,1.f, (colours::blue + colours::black)/2,  (colours::red + colours::green )/2 );
-
-      // get rotation of x-axis to align vertically with world x
-      auto const rotBW_x = quan::three_d::z_rotation(-quan::atan2(B.x.y,B.x.x));
-      auto const BW_x = make_vect(
-         rotBW_x(B.x), 
-         rotBW_x(B.y),
-         rotBW_x(B.z)
-      );
-
-      draw_arrow(BW_x.x, 1.f, (colours::red + colours::grey)/2, (colours::blue + colours::green )/2 );
-      draw_arrow(BW_x.y, 1.f, (colours::green + colours::grey)/2, (colours::blue + colours::red  )/2 );
-      draw_arrow(BW_x.z, 1.f, (colours::blue + colours::grey)/2,  (colours::red + colours::green )/2 );
-
-      quan::angle::rad max_angle = quan::atan2(abs(BW_x.x.x),abs(BW_x.x.z))/2;
-      // aileron/roll around x axis ---------------------------
-      // y component
-      quan::angle::rad rxy = quan::constrain(quan::atan2(BW_x.y.z,BW_x.y.y),-max_angle,max_angle);
-      // z component
-      quan::angle::rad rxz = quan::constrain(quan::atan2(BW_x.y.y,BW_x.y.z),-max_angle,max_angle);
-      // scale by abs cosine of angle of Bwx with W.x Bw_x.x.x 
-      quan::torque::N_m torque_x = abs(BW_x.x.x) * (rxy * I.y + rxz * I.z  ) * accelK;
-
+     // correcting torque around x axis
+     quan::torque::N_m torque_x = 0_N_m;//get_torque_x(B,W,I,accelK,false);
+     quan::torque::N_m torque_y = get_torque_y(B,W,I,accelK,true);
+//-------------
       // elevator/pitch around y axis ------------------------
       // x component
       quan::angle::rad ry_xBT = constrain_angle((B.x.x > 0)
@@ -218,7 +287,7 @@ namespace {
       );
 
       // TODO multiply by abs(cos(B.y.z))
-      quan::torque::N_m torque_y = 0_N_m; //(ry_xBT * I.x + ry_zBT * I.z) * accelK ;
+      //quan::torque::N_m torque_y = 0_N_m; //(ry_xBT * I.x + ry_zBT * I.z) * accelK ;
 
       // rudder/yaw around z axis --------------------
       // x component
@@ -249,7 +318,7 @@ namespace {
       );
 
       draw_plane(qpose, deflections);
-
+#if 0
       /// draw text
       {
          glPushMatrix();
@@ -279,6 +348,7 @@ namespace {
 //             quanGLText(buf,{x,y});
          glPopMatrix();
       }
+#endif
    }
 }
 
