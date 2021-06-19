@@ -170,9 +170,9 @@ namespace {
       quan::angle::rad const errorAngleLim = quan::atan2(abs(BWx.x.x),abs(BWx.x.z))/2;
       // aileron/roll around x axis ---------------------------
       // y component
-      quan::angle::rad const rxy = quan::constrain(quan::atan2(BWx.y.z,BWx.y.y),-errorAngleLim,errorAngleLim);
+      quan::angle::rad const rxy = 0_rad;// quan::constrain(quan::atan2(BWx.y.z,BWx.y.y),-errorAngleLim,errorAngleLim);
       // z component
-      quan::angle::rad const rxz = quan::constrain(quan::atan2(BWx.y.y,BWx.y.z),-errorAngleLim,errorAngleLim);
+      quan::angle::rad const rxz = quan::constrain(-quan::atan2(BWx.z.y,BWx.z.z),-errorAngleLim,errorAngleLim);
       // scale by abs cosine of angle of Bwx with W.x Bw_x.x.x 
       quan::torque::N_m torque_x = abs(BWx.x.x) * (rxy * I.y + rxz * I.z  ) * accelK;
 
@@ -205,7 +205,6 @@ namespace {
          draw_arrow(BWy.y, 1.f, (colours::green + colours::grey)/2, (colours::blue + colours::red  )/2 );
          draw_arrow(BWy.z, 1.f, (colours::blue + colours::grey)/2,  (colours::red + colours::green )/2 );
 
-
          glPushMatrix();
             glLoadIdentity();
             constexpr size_t bufSize = 255;
@@ -235,7 +234,7 @@ namespace {
       quan::three_d::vect<quan::mass::kg> constexpr mass = {
         0.5_kg, //along x axis
         2_kg, //along y axis
-        1_kg // along z axis
+        2_kg // along z axis
       };
 
       quan::three_d::vect<quan::length::m> constexpr  dist = {
@@ -270,8 +269,8 @@ namespace {
       );
 
      // correcting torque around x axis
-     quan::torque::N_m torque_x = 0_N_m;//get_torque_x(B,W,I,accelK,false);
-     quan::torque::N_m torque_y = get_torque_y(B,W,I,accelK,true);
+     quan::torque::N_m torque_x = get_torque_x(B,W,I,accelK,true);
+     quan::torque::N_m torque_y = 0_N_m;//get_torque_y(B,W,I,accelK,true);
 //-------------
       // elevator/pitch around y axis ------------------------
       // x component
