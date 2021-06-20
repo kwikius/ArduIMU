@@ -103,7 +103,7 @@ namespace {
    }
 
    /**
-   *  @brief derive torque required from ailerons to return to straight and level flight.
+   *  @brief derive proportional torque required from ailerons to return to straight and level flight.
    **/
    template <typename BodyFrame, typename Inertia, typename AccelK>
    quan::torque::N_m get_torque_x(BodyFrame const & B, Inertia const & I, AccelK const & accelK, bool draw)
@@ -154,7 +154,7 @@ namespace {
    }
  
    /**
-    * @brief derive torque for elevator to return to straight and level flight
+    * @brief derive proportional torque for elevator to return to straight and level flight
    **/
    template <typename BodyFrame, typename Inertia, typename AccelK>
    quan::torque::N_m get_torque_y(BodyFrame const & B, Inertia const & I, AccelK const & accelK, bool draw)
@@ -202,7 +202,7 @@ namespace {
    }
 
    /**
-     * @brief derive torque from rudder to return to strraight and level flight
+     * @brief derive proportional torque from rudder to return to strraight and level flight
    **/
 
    template <typename BodyFrame, typename Inertia, typename AccelK>
@@ -274,7 +274,6 @@ namespace {
 
    /***
       angular accel required per deg of axis error
-      function of 
    **/
      auto accelK = 1./quan::pow<2>(1000_ms);
 
