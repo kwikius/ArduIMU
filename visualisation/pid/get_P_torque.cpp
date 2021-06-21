@@ -7,7 +7,7 @@
 #include <quan/three_d/vect.hpp>
 #include <quan/three_d/make_vect.hpp>
 
-#include "get_pid_torque.hpp"
+#include "get_torque.hpp"
 
 namespace {
 
@@ -164,7 +164,7 @@ namespace {
       return torque_z;
    }
 
-}
+} // namespace
 
 quan::three_d::vect<quan::torque::N_m> 
 get_P_torque(
