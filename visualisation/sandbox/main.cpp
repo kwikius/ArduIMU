@@ -68,7 +68,7 @@ namespace {
    void update_turnrate()
    {
       auto const & js = get_joystick();
-      quan::three_d::vect<double>; stick_percent;
+      quan::three_d::vect<double> stick_percent;
       js.update(stick_percent);
 
       /// @brief calc turn rates vector per element
