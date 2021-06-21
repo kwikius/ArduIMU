@@ -7,12 +7,10 @@
 #include <quan/constrain.hpp>
 #include <quan/utility/timer.hpp>
 
-#include <quan/moment_of_inertia.hpp>
 #include <quan/mass.hpp>
 #include <quan/length.hpp>
 #include <quan/velocity.hpp>
-#include <quan/torque.hpp>
-#include <quan/angular_velocity.hpp>
+
 #include <quan/atan2.hpp>
 
 #include <quan/three_d/rotation.hpp>
@@ -23,6 +21,8 @@
 #include <serial_port.hpp>
 #include <joystick.hpp>
 #include <quanGL.hpp>
+
+#include <pid/get_torque.hpp>
 
 const char * get_title(){ return "torque differential error";}
 bool use_serial_port(){return false;}
@@ -49,8 +49,8 @@ namespace {
    QUAN_QUANTITY_LITERAL(time,ms)
    QUAN_QUANTITY_LITERAL(time,s)
 
-   quan::three_d::vect<rad_per_s> const max_turn_rate
-    = {
+   quan::three_d::vect<rad_per_s> const 
+   max_turn_rate = {
        90.0_deg_per_s,   //roll
         90.0_deg_per_s,  //pitch
           90.0_deg_per_s  //yaw
@@ -68,7 +68,7 @@ namespace {
    void update_turnrate()
    {
       auto const & js = get_joystick();
-      quan::three_d::vect<double>; stick_percent;
+      quan::three_d::vect<double> stick_percent;
       js.update(stick_percent);
 
       /// @brief calc turn rates vector per element
@@ -88,39 +88,6 @@ namespace {
       }
    }
 
-   /**
-   *  @brief derive differential aileron torque
-   **/
-   template <typename Inertia>
-   quan::three_d::vect<quan::torque::N_m> get_torque(Inertia const & I,bool draw)
-   {
-      auto constexpr tstop = 1_s;
-      quan::three_d::vect<quan::torque::N_m> torque = {
-         turn_rate.x *( I.y + I.z) / tstop,
-         turn_rate.y *( I.x + I.z) / tstop,
-         turn_rate.z *( I.x + I.y) / tstop ,
-      };  
-
-      if (draw){
-         glPushMatrix();
-            glLoadIdentity();
-            constexpr size_t bufSize = 255;
-            char buf[bufSize];
-            float const y = -0.5;
-            float constexpr x = 0.4;
-           // float constexpr dy = 0.07;
-            quanGLColor(colours::white);
-            snprintf(buf,bufSize,"T.x=% 8.2f N_m, T.y=% 8.2f N_m, T.z=% 8.2f N_m",
-               torque.x.numeric_value(),
-               torque.y.numeric_value(),
-               torque.z.numeric_value()
-            );
-            quanGLText(buf,{x,y});
-         glPopMatrix();
-      }
-      return torque;
-   }
- 
    void draw_sandbox()
    {
       update_model_frame();
@@ -144,7 +111,7 @@ namespace {
       };
 
       bool const show_text = true;
-      auto const torque = get_torque(I,show_text);
+      auto const torque = get_D_torque(turn_rate,I,show_text);
 
       auto torque_per_deg = quan::three_d::make_vect(
             1.0_N_m/ 1_rad, // aileron

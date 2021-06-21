@@ -2,33 +2,33 @@
 /*
   copyright (C) 2019 - 2021 Andy Little
 */
-#include <pid/get_torque.hpp>
+
 #include <quanGL.hpp>
 #include <serial_port.hpp>
 #include <joystick.hpp>
 #include <quan/utility/timer.hpp>
 #include <quan/constrain.hpp>
 
-#include <quan/moment_of_inertia.hpp>
+//#include <quan/moment_of_inertia.hpp>
 #include <quan/mass.hpp>
 #include <quan/length.hpp>
-#include <quan/torque.hpp>
+//#include <quan/torque.hpp>
 #include <quan/three_d/rotation.hpp>
 #include <quan/angular_velocity.hpp>
 #include <quan/atan2.hpp>
 
 #include <quan/three_d/make_vect.hpp>
 #include <quan/three_d/rotation_from.hpp>
-#include <quan/three_d/out/vect.hpp>
+//#include <quan/three_d/vect.hpp>
+#include <pid/get_torque.hpp>
+//#include <iostream>
 
-#include <iostream>
-
-const char * get_title(){ return "torque proportional to attitude error";}
+const char * get_title(){ return "torque Integral to attitude error";}
 bool use_serial_port(){return false;}
 bool use_joystick(){return true;}
 
 /**
-*  @brief control deflection proportional to attitude error
+*  @brief control deflection Integral to attitude error
 *
 *  Find torque and show deflections of roll pitch and yaw control surfaces
 *  to move the aircraft from its current orientation qB
@@ -51,7 +51,6 @@ namespace {
    QUAN_QUANTITY_LITERAL(mass,kg)
    QUAN_QUANTITY_LITERAL(torque, N_m)
    QUAN_QUANTITY_LITERAL(time,ms)
-   QUAN_QUANTITY_LITERAL(time,s)
 
    /// @brief defines what a full joystick +ve deflection means per axis
    quan::three_d::vect<rad_per_s> const max_turn_rate
@@ -80,18 +79,27 @@ namespace {
    /// @brief simulation time step 
    quan::time::ms constexpr time_step = 20_ms;
 
+   /// @brief latest turn rate
+   quan::three_d::vect<rad_per_s> turn_rate{ 
+      0.0_rad_per_s,
+         0.0_rad_per_s,
+            0.0_rad_per_s
+   };
+
    /// @brief update model attitude from joystick for next timestep
    void update_body_frame()
    {
-      quan::three_d::vect<rad_per_s> turn_rate;
       update_turnrate(turn_rate);
       auto const turn = turn_rate * time_step;
       auto const magturn = magnitude(turn);
-      if ( magturn > 0.001_rad){
+      if ( magturn > 0.001_deg){
          auto const qturn = quatFrom(unit_vector(turn),magturn);
          qpose = unit_quat(hamilton_product(qpose,qturn));
       }
    }
+
+   /// @brief integral accumulator;
+   quan::three_d::vect<quan::torque::N_m> torque_integral;
 
    void draw_sandbox()
    {
@@ -119,8 +127,8 @@ namespace {
           mass.z * quan::pow<2>(dist.z)
       };
 
-      /// @brief  angular accel required per deg of axis error
-      auto constexpr accelK = 1./quan::pow<2>(1_s);
+      ///  @brief  angular accel required per deg of axis error
+      auto constexpr accelK = 1./quan::pow<2>(1000_ms);
 
       /// @brief World Frame axis unit vectors
       auto constexpr W = make_vect(
@@ -137,9 +145,28 @@ namespace {
       );
 
       /// @brief true to display params as the torque values are derived
-      bool const show_text = true;
+      bool const show_text = false;
 
-      auto const torque = get_P_torque(B,I,accelK,show_text);
+      /// @brief correcting torque vectors
+      quan::three_d::vect<quan::torque::N_m> const I_torque = get_I_torque(B,I,accelK,show_text);
+
+      double kI = 0.05;
+      constexpr auto torque_lim_All = 0.25_N_m;
+      
+      quan::three_d::vect<quan::torque::N_m> constexpr torque_lim = {
+         torque_lim_All,
+         torque_lim_All,
+         torque_lim_All
+      };
+
+      torque_integral.x = quan::constrain(torque_integral.x + I_torque.x * kI, -torque_lim.x,torque_lim.x);
+      torque_integral.y = quan::constrain(torque_integral.y + I_torque.y * kI, -torque_lim.y,torque_lim.y);
+      torque_integral.z = quan::constrain(torque_integral.z + I_torque.z * kI, -torque_lim.z,torque_lim.z);
+
+      quan::three_d::vect<quan::torque::N_m> torque = 
+         get_P_torque(B,I,accelK,show_text) +
+         get_D_torque(turn_rate,I,show_text) +
+         torque_integral;
 
       /// @brief scaling torque per degree of control deflection per axis
       auto constexpr torque_per_deg = quan::three_d::make_vect(
@@ -147,7 +174,6 @@ namespace {
          1.0_N_m/ 1_rad,// elevator
          1.0_N_m/ 1_rad// rudder
       );
-
       /// @brief limit of allowable control deflection
       quan::angle::rad constexpr control_defl_lim = 45_deg;
       quan::three_d::vect<quan::angle::deg> const deflections = {
@@ -157,6 +183,22 @@ namespace {
       };
 
       draw_plane(qpose, deflections);
+
+      glPushMatrix();
+         glLoadIdentity();
+         constexpr size_t bufSize = 255;
+         char buf[bufSize];
+         float const y = -0.64;
+         float constexpr x = 0.4;
+        // float constexpr dy = 0.07;
+         quanGLColor(colours::white);
+         snprintf(buf,bufSize,"tI: x=% 8.2f N_m, y=% 8.2f N_m, z=% 8.2f N_m",
+            torque_integral.x.numeric_value(),
+            torque_integral.y.numeric_value(),
+            torque_integral.z.numeric_value()
+         );
+         quanGLText(buf,{x,y});
+      glPopMatrix();
    }
 }
 
@@ -180,3 +222,5 @@ void onIdle()
       glutPostRedisplay();
    }
 }
+
+
