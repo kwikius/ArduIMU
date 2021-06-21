@@ -23,12 +23,12 @@
 
 #include <iostream>
 
-const char * get_title(){ return "torque proportional to attitude error";}
+const char * get_title(){ return "torque Integral to attitude error";}
 bool use_serial_port(){return false;}
 bool use_joystick(){return true;}
 
 /**
-*  @brief control deflection proportional to attitude error
+*  @brief control deflection Integral to attitude error
 *
 *  Find torque and show deflections of roll pitch and yaw control surfaces
 *  to move the aircraft from its current orientation qB
@@ -51,7 +51,6 @@ namespace {
    QUAN_QUANTITY_LITERAL(mass,kg)
    QUAN_QUANTITY_LITERAL(torque, N_m)
    QUAN_QUANTITY_LITERAL(time,ms)
-   QUAN_QUANTITY_LITERAL(time,s)
 
    /// @brief defines what a full joystick +ve deflection means per axis
    quan::three_d::vect<rad_per_s> const max_turn_rate
@@ -87,22 +86,16 @@ namespace {
       update_turnrate(turn_rate);
       auto const turn = turn_rate * time_step;
       auto const magturn = magnitude(turn);
-      if ( magturn > 0.001_rad){
+      if ( magturn > 0.001_deg){
          auto const qturn = quatFrom(unit_vector(turn),magturn);
          qpose = unit_quat(hamilton_product(qpose,qturn));
       }
    }
-
-   using per_s2  = decltype( 1./ quan::pow<2>(1_s) );
+   static constexpr int powN = 8;
 
    /// @brief derive proportional torque required from ailerons to return to straight and level flight.
-   quan::torque::N_m 
-   get_P_torque_x(
-      quan::three_d::vect< quan::three_d::vect<double> >const & B, 
-      quan::three_d::vect<quan::moment_of_inertia::kg_m2> const & I, 
-      per_s2 const & accelK, 
-      bool draw
-   )
+   template <typename BodyFrame, typename Inertia, typename AccelK>
+   quan::torque::N_m get_torque_x(BodyFrame const & B, Inertia const & I, AccelK const & accelK, bool draw)
    {
       /// @brief get z-rotation of Body x-axis to align B.x vertically with W.x in x z plane
       auto const rotBWx = quan::three_d::z_rotation(-quan::atan2(B.x.y,B.x.x));
@@ -112,13 +105,13 @@ namespace {
          rotBWx(B.z)
       );
       /// @brief make a limit for x and y error angles inversely proportional to how far BWX.x is from W.x
-      quan::angle::rad const theta_lim = quan::atan2(abs(BWx.x.x),abs(BWx.x.z))/2;
+      quan::angle::rad const errorAngleLim = quan::atan2(abs(BWx.x.x),abs(BWx.x.z))/2;
       /// @brief y roll error component 
-      quan::angle::rad const rxy = quan::constrain(quan::atan2(BWx.y.z,BWx.y.y),-theta_lim,theta_lim);
+      quan::angle::rad const rxy = quan::constrain(quan::atan2(BWx.y.z,BWx.y.y),-errorAngleLim,errorAngleLim);
       /// @brief z roll error component
-      quan::angle::rad const rxz = quan::constrain(-quan::atan2(BWx.z.y,BWx.z.z),-theta_lim,theta_lim);
+      quan::angle::rad const rxz = quan::constrain(-quan::atan2(BWx.z.y,BWx.z.z),-errorAngleLim,errorAngleLim);
       /// resultant torque is scaled scale by abs cosine of angle of Bwx with W.x Bw_x.x.x 
-      quan::torque::N_m const torque_x = abs(BWx.x.x) * (rxy * I.y + rxz * I.z  ) * accelK;
+      quan::torque::N_m torque_x = quan::pow<powN>(abs(BWx.x.x)) * (rxy * I.y + rxz * I.z  ) * accelK;
 
       if (draw){
 #if 0
@@ -147,31 +140,25 @@ namespace {
    }
  
    /// @brief derive proportional torque for elevator to return to straight and level flight
-   quan::torque::N_m 
-   get_P_torque_y(
-      quan::three_d::vect< quan::three_d::vect<double> >const & B, 
-      quan::three_d::vect<quan::moment_of_inertia::kg_m2> const & I, 
-      per_s2 const & accelK, 
-      bool draw
-   )
+   template <typename BodyFrame, typename Inertia, typename AccelK>
+   quan::torque::N_m get_torque_y(BodyFrame const & B, Inertia const & I, AccelK const & accelK, bool draw)
    {
       /// @brief get zrotation of y-axis to align horizontally with world y in yz plane
-      /// and rotate axes to this frame
       auto const rotBWy = quan::three_d::z_rotation(quan::atan2(B.y.x,B.y.y));
+      /// @brief get axes to this frame
       auto const BWy = make_vect(
          rotBWy(B.x), 
          rotBWy(B.y),
          rotBWy(B.z)
       );
 
-      // limit the error angle to at most +- 45 deg but scaled inverse to how far Bwy.y is from W.y
-      quan::angle::rad const theta_lim = quan::atan2(abs(BWy.y.y),abs(BWy.y.z))/2;
+      quan::angle::rad const errorAngleLim = quan::atan2(abs(BWy.y.y),abs(BWy.y.z))/2;
       // x component
-      quan::angle::rad const ryx = quan::constrain(-quan::atan2(BWy.x.z,BWy.x.x),-theta_lim,theta_lim);
+      quan::angle::rad const ryx = quan::constrain(-quan::atan2(BWy.x.z,BWy.x.x),-errorAngleLim,errorAngleLim);
       // z component
-      quan::angle::rad const ryz = quan::constrain(quan::atan2(BWy.z.x,BWy.z.z),-theta_lim,theta_lim);
+      quan::angle::rad const ryz = quan::constrain(quan::atan2(BWy.z.x,BWy.z.z),-errorAngleLim,errorAngleLim);
       // scale by abs cosine of angle of Bwy with W.y  
-      quan::torque::N_m const torque_y = abs(BWy.y.y) * (ryx * I.x + ryz * I.z  ) * accelK;
+      quan::torque::N_m torque_y = quan::pow<powN>(abs(BWy.y.y)) * (ryx * I.x + ryz * I.z  ) * accelK;
 
       if (draw){
 #if 0
@@ -199,13 +186,8 @@ namespace {
    }
 
    /// @brief derive proportional torque from rudder to return to strraight and level flight
-   quan::torque::N_m 
-   get_P_torque_z(
-      quan::three_d::vect< quan::three_d::vect<double> >const & B, 
-      quan::three_d::vect<quan::moment_of_inertia::kg_m2> const & I, 
-      per_s2 const & accelK, 
-      bool draw
-   )
+   template <typename BodyFrame, typename Inertia, typename AccelK>
+   quan::torque::N_m get_torque_z(BodyFrame const & B, Inertia const & I, AccelK const & accelK, bool draw)
    {
      // get xrotation of z-axis to align vertically with world z in zx plane
       auto const rotBWz = quan::three_d::x_rotation(quan::atan2(B.z.y,B.z.z));
@@ -215,13 +197,13 @@ namespace {
          rotBWz(B.z)
       );
 
-      quan::angle::rad const theta_lim = quan::atan2(abs(B.z.z),quan::sqrt(quan::pow<2>(B.z.x) + quan::pow<2>(B.z.y)))/2;
+      quan::angle::rad const errorAngleLim = quan::atan2(abs(B.z.z),quan::sqrt(quan::pow<2>(B.z.x) + quan::pow<2>(B.z.y)))/2;
       // x component
-      quan::angle::rad const rzx = quan::constrain(quan::atan2(BWz.x.y,BWz.x.x),-theta_lim,theta_lim);
+      quan::angle::rad const rzx = quan::constrain(quan::atan2(BWz.x.y,BWz.x.x),-errorAngleLim,errorAngleLim);
       // z component
-      quan::angle::rad const rzy = quan::constrain(-quan::atan2(BWz.y.x,BWz.y.y),-theta_lim,theta_lim);
+      quan::angle::rad const rzy = quan::constrain(-quan::atan2(BWz.y.x,BWz.y.y),-errorAngleLim,errorAngleLim);
       // scale by abs cosine of angle of B.x with W.z
-      quan::torque::N_m torque_z = abs(B.z.z) * (rzx * I.x + rzy * I.y ) * accelK;
+      quan::torque::N_m torque_z = quan::pow<powN>(abs(B.z.z)) * (rzx * I.x + rzy * I.y ) * accelK;
 
       if (draw){
 #if 0
@@ -247,6 +229,8 @@ namespace {
       }
       return torque_z;
    }
+
+   quan::three_d::vect<quan::torque::N_m> torque_integral;
 
    void draw_sandbox()
    {
@@ -275,7 +259,7 @@ namespace {
       };
 
       ///  @brief  angular accel required per deg of axis error
-      auto constexpr accelK = 1./quan::pow<2>(1_s);
+      auto constexpr accelK = 1./quan::pow<2>(1000_ms);
 
       /// @brief World Frame axis unit vectors
       auto constexpr W = make_vect(
@@ -292,14 +276,27 @@ namespace {
       );
 
       /// @brief true to display params as the torque values are derived
-      bool const show_text = true;
+      bool const show_text = false;
 
       /// @brief correcting torque vectors
-      auto const torque = quan::three_d::make_vect(
-         get_P_torque_x(B,I,accelK,show_text),
-         get_P_torque_y(B,I,accelK,show_text),
-         get_P_torque_z(B,I,accelK,show_text)
+      quan::three_d::vect<quan::torque::N_m> const torque = quan::three_d::make_vect(
+         get_torque_x(B,I,accelK,show_text),
+         get_torque_y(B,I,accelK,show_text),
+         get_torque_z(B,I,accelK,show_text)
       );
+
+      double kI = 0.05;
+      constexpr auto torque_lim_All = 0.25_N_m;
+      
+      quan::three_d::vect<quan::torque::N_m> constexpr torque_lim = {
+         torque_lim_All,
+         torque_lim_All,
+         torque_lim_All
+      };
+
+      torque_integral.x = quan::constrain(torque_integral.x + torque.x * kI, -torque_lim.x,torque_lim.x);
+      torque_integral.y = quan::constrain(torque_integral.y + torque.y * kI, -torque_lim.y,torque_lim.y);
+      torque_integral.z = quan::constrain(torque_integral.z + torque.z * kI, -torque_lim.z,torque_lim.z);
 
       /// @brief scaling torque per degree of control deflection per axis
       auto constexpr torque_per_deg = quan::three_d::make_vect(
@@ -307,16 +304,31 @@ namespace {
          1.0_N_m/ 1_rad,// elevator
          1.0_N_m/ 1_rad// rudder
       );
-
       /// @brief limit of allowable control deflection
       quan::angle::rad constexpr control_defl_lim = 45_deg;
       quan::three_d::vect<quan::angle::deg> const deflections = {
-         quan::constrain(-torque.x/torque_per_deg.x,-control_defl_lim,control_defl_lim),
-         quan::constrain(-torque.y/torque_per_deg.y,-control_defl_lim,control_defl_lim),
-         quan::constrain(-torque.z/torque_per_deg.z,-control_defl_lim,control_defl_lim)
+         quan::constrain(-torque_integral.x/torque_per_deg.x,-control_defl_lim,control_defl_lim),
+         quan::constrain(-torque_integral.y/torque_per_deg.y,-control_defl_lim,control_defl_lim),
+         quan::constrain(-torque_integral.z/torque_per_deg.z,-control_defl_lim,control_defl_lim)
       };
 
       draw_plane(qpose, deflections);
+
+         glPushMatrix();
+            glLoadIdentity();
+            constexpr size_t bufSize = 255;
+            char buf[bufSize];
+            float const y = -0.64;
+            float constexpr x = 0.4;
+           // float constexpr dy = 0.07;
+            quanGLColor(colours::white);
+            snprintf(buf,bufSize,"tI: x=% 8.2f N_m, y=% 8.2f N_m, z=% 8.2f N_m",
+               torque_integral.x.numeric_value(),
+               torque_integral.y.numeric_value(),
+               torque_integral.z.numeric_value()
+            );
+            quanGLText(buf,{x,y});
+         glPopMatrix();
    }
 }
 
